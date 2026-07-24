@@ -1,0 +1,89 @@
+---
+import "../styles/global.css";
+import SiteHeader from "../components/SiteHeader.astro";
+import { siteMeta } from "../data/site.js";
+import { createTranslator } from "../i18n";
+import { getPublicSiteAssets, getPublicSiteIdentity } from "../lib/public-data";
+
+interface Props {
+  title?: string;
+  description?: string;
+  path?: string;
+  image?: string;
+  type?: "website" | "article";
+  noindex?: boolean;
+}
+
+const [identity, assets] = await Promise.all([
+  getPublicSiteIdentity(Astro.locals),
+  getPublicSiteAssets(Astro.locals),
+]);
+const {
+  title = identity.name,
+  description = identity.description,
+  path = Astro.url.pathname,
+  image = assets.homeHeroUrl ?? assets.backgroundUrl ?? undefined,
+  type = "website",
+  noindex = false
+} = Astro.props;
+
+const pageTitle = title === identity.name ? `${identity.name} · ${identity.tagline}` : `${title} · ${identity.name}`;
+const canonical = new URL(path, siteMeta.url).toString();
+const socialImage = image ? new URL(image, siteMeta.url).toString() : null;
+const t = createTranslator(identity.locale);
+---
+
+<!doctype html>
+<html lang={identity.locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="keywords" content={siteMeta.keywords.join(",")} />
+    <meta name="theme-color" content="#10131a" />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
+    <title>{pageTitle}</title>
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/rss+xml" title={`${identity.name} RSS`} href="/rss.xml" />
+    {assets.backgroundUrl && <link rel="preload" href={assets.backgroundUrl} as="image" fetchpriority="high" />}
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={identity.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {socialImage && <meta property="og:image" content={socialImage} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    {socialImage && <meta name="twitter:image" content={socialImage} />}
+    <script is:inline>
+      document.documentElement.classList.add("js");
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">{t("a11y.skip")}</a>
+    <div class="site-backdrop" style={assets.backgroundUrl ? `--site-backdrop-image: url("${assets.backgroundUrl}")` : undefined} aria-hidden="true"></div>
+    <div class="page-shell">
+      <SiteHeader path={path} name={identity.name} tagline={identity.tagline} locale={identity.locale} />
+      <main class="page-main" id="main-content">
+        <slot />
+      </main>
+      <footer class="site-footer">
+        <div class="footer-inner">
+          <div>
+            <strong>{identity.name}</strong>
+            <p>{identity.tagline}，收集技术、游戏与创作的长期记录。</p>
+          </div>
+          <nav aria-label="页脚导航">
+            <a href={`mailto:${identity.email}`}>{t("footer.email")}</a>
+            <a href="/rss.xml">RSS</a>
+            <a href="/sitemap.xml">{t("footer.sitemap")}</a>
+            <a href="/studio">Studio</a>
+          </nav>
+          <p class="footer-note">© {new Date().getFullYear()} {identity.name}</p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

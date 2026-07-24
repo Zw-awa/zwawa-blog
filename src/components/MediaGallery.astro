@@ -1,0 +1,106 @@
+---
+import type { PublicContent, PublicMedia } from "../lib/public-data";
+
+interface Props {
+  item: Pick<PublicContent, "title" | "coverUrl" | "media">;
+}
+
+const { item } = Astro.props;
+const coverId = item.media.find((media: PublicMedia) => media.url === item.coverUrl)?.id;
+const images = item.media.filter(
+  (media: PublicMedia): media is PublicMedia => media.role === "gallery" && media.mimeType.startsWith("image/") && media.id !== coverId
+);
+const data = JSON.stringify(images).replace(/</g, "\\u003c");
+---
+
+{images.length > 0 && (
+  <section class="media-gallery" data-media-gallery aria-labelledby={`gallery-${item.title.replace(/\s+/g, "-")}`}>
+    <div class="media-gallery-heading">
+      <div>
+        <p class="eyebrow">IMAGE SET</p>
+        <h2 id={`gallery-${item.title.replace(/\s+/g, "-")}`}>图集</h2>
+      </div>
+      <span>{String(images.length).padStart(2, "0")} 幅</span>
+    </div>
+    <div class="media-gallery-grid">
+      {images.map((image: PublicMedia, index: number) => (
+        <button type="button" data-gallery-open={index} aria-label={`放大查看第 ${index + 1} 幅图片`}>
+          <img
+            src={image.url}
+            alt={image.alt || image.caption || `${item.title} 图集第 ${index + 1} 幅`}
+            width={image.width ?? undefined}
+            height={image.height ?? undefined}
+            loading="lazy"
+          />
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          {image.caption && <small>{image.caption}</small>}
+        </button>
+      ))}
+    </div>
+
+    <dialog class="media-lightbox" data-gallery-dialog aria-label={`${item.title} 图集大图`}>
+      <div class="media-lightbox-bar">
+        <p data-gallery-count></p>
+        <button type="button" data-gallery-close aria-label="关闭大图" title="关闭">×</button>
+      </div>
+      <button class="media-lightbox-nav previous" type="button" data-gallery-previous aria-label="上一幅" title="上一幅">←</button>
+      <figure>
+        <img data-gallery-image src="" alt="" />
+        <figcaption data-gallery-caption></figcaption>
+      </figure>
+      <button class="media-lightbox-nav next" type="button" data-gallery-next aria-label="下一幅" title="下一幅">→</button>
+    </dialog>
+    <script is:inline type="application/json" data-gallery-data set:html={data}></script>
+  </section>
+)}
+
+<script>
+  type GalleryImage = { url: string; alt: string; caption: string };
+
+  document.querySelectorAll<HTMLElement>("[data-media-gallery]").forEach((gallery) => {
+    if (gallery.dataset.ready === "true") return;
+    gallery.dataset.ready = "true";
+
+    const dialog = gallery.querySelector<HTMLDialogElement>("[data-gallery-dialog]");
+    const dataNode = gallery.querySelector<HTMLScriptElement>("[data-gallery-data]");
+    const image = gallery.querySelector<HTMLImageElement>("[data-gallery-image]");
+    const caption = gallery.querySelector<HTMLElement>("[data-gallery-caption]");
+    const count = gallery.querySelector<HTMLElement>("[data-gallery-count]");
+    if (!dialog || !dataNode || !image || !caption || !count) return;
+
+    let images: GalleryImage[] = [];
+    try {
+      images = JSON.parse(dataNode.textContent || "[]") as GalleryImage[];
+    } catch {
+      return;
+    }
+    if (images.length === 0) return;
+
+    let current = 0;
+    const show = (index: number) => {
+      current = (index + images.length) % images.length;
+      const selected = images[current];
+      image.src = selected.url;
+      image.alt = selected.alt || selected.caption || `图集第 ${current + 1} 幅`;
+      caption.textContent = selected.caption || selected.alt || "";
+      caption.hidden = !caption.textContent;
+      count.textContent = `${String(current + 1).padStart(2, "0")} / ${String(images.length).padStart(2, "0")}`;
+    };
+
+    gallery.querySelectorAll<HTMLElement>("[data-gallery-open]").forEach((button) => {
+      button.addEventListener("click", () => {
+        show(Number(button.dataset.galleryOpen || 0));
+        dialog.showModal();
+      });
+    });
+
+    gallery.querySelector("[data-gallery-close]")?.addEventListener("click", () => dialog.close());
+    gallery.querySelector("[data-gallery-previous]")?.addEventListener("click", () => show(current - 1));
+    gallery.querySelector("[data-gallery-next]")?.addEventListener("click", () => show(current + 1));
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") show(current - 1);
+      if (event.key === "ArrowRight") show(current + 1);
+    });
+  });
+</script>

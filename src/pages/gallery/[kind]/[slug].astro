@@ -1,0 +1,63 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import MediaGallery from "../../../components/MediaGallery.astro";
+import { getPublicContent } from "../../../lib/public-data";
+
+export const prerender = false;
+
+const kind = Astro.params.kind;
+const type = kind === "art" ? "artwork" : kind === "photo" ? "photo" : null;
+const item = type ? await getPublicContent(Astro.locals, type, Astro.params.slug ?? "") : null;
+if (!item) Astro.response.status = 404;
+const backHref = type === "artwork" ? "/gallery/art" : "/gallery/photo";
+const backLabel = type === "artwork" ? "返回画作展" : "返回摄影展";
+---
+
+<BaseLayout
+  title={item?.title ?? "作品未找到"}
+  description={item?.summary ?? "这件作品不存在或尚未公开。"}
+  path={Astro.url.pathname}
+  image={item?.coverUrl ?? undefined}
+  type="article"
+  noindex={!item}
+>
+  {item ? (
+    <article class="gallery-detail">
+      <a class="back-link" href={backHref}>← {backLabel}</a>
+      <header>
+        <p class="eyebrow">{item.typeLabel} / {item.publishedAt.slice(0, 10)}</p>
+        <h1>{item.title}</h1>
+        {item.summary && <p>{item.summary}</p>}
+      </header>
+      {item.coverUrl && (
+        <>
+          <button class="gallery-detail-image" type="button" data-open-lightbox aria-label="放大查看作品">
+            <img src={item.coverUrl} alt={item.coverAlt || item.title} />
+            <span>放大查看</span>
+          </button>
+          <dialog class="lightbox" data-lightbox>
+            <button type="button" data-close-lightbox aria-label="关闭大图">×</button>
+            <img src={item.coverUrl} alt={item.coverAlt || item.title} />
+          </dialog>
+        </>
+      )}
+      {item.renderedHtml && <div class="prose gallery-note" set:html={item.renderedHtml}></div>}
+      <MediaGallery item={item} />
+      {item.tags.length > 0 && <ul class="tag-list">{item.tags.map((tag) => <li>{tag}</li>)}</ul>}
+    </article>
+  ) : (
+    <section class="not-found"><p class="eyebrow">404 / EMPTY FRAME</p><h1>这个画框里没有公开作品。</h1><a class="button quiet" href={backHref}>返回展厅 →</a></section>
+  )}
+
+  <script is:inline>
+    (() => {
+      const dialog = document.querySelector("[data-lightbox]");
+      const open = document.querySelector("[data-open-lightbox]");
+      const close = document.querySelector("[data-close-lightbox]");
+      if (!(dialog instanceof HTMLDialogElement)) return;
+      open?.addEventListener("click", () => dialog.showModal());
+      close?.addEventListener("click", () => dialog.close());
+      dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+    })();
+  </script>
+</BaseLayout>

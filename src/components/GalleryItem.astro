@@ -1,0 +1,31 @@
+---
+import { contentHref, formatPublicDate, type PublicContent } from "../lib/public-data";
+
+interface Props {
+  item: PublicContent;
+  index: number;
+}
+
+const { item, index } = Astro.props;
+const href = contentHref(item);
+---
+
+<article class="gallery-item">
+  <a class="gallery-media" href={href} aria-label={`查看《${item.title}》`}>
+    {item.coverUrl ? (
+      <img src={item.coverUrl} alt={item.coverAlt || item.title} loading="lazy" />
+    ) : (
+      <span class="gallery-fallback" aria-hidden="true">
+        <i>{String(index + 1).padStart(2, "0")}</i>
+        <b>{item.type === "artwork" ? "ART" : "PHOTO"}</b>
+      </span>
+    )}
+  </a>
+  <div class="gallery-caption">
+    <div>
+      <h2><a href={href}>{item.title}</a></h2>
+      {item.summary && <p>{item.summary}</p>}
+    </div>
+    <time datetime={item.publishedAt}>{formatPublicDate(item.publishedAt)}</time>
+  </div>
+</article>

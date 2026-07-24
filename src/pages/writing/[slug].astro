@@ -1,0 +1,38 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ContentDetail from "../../components/ContentDetail.astro";
+import ContentCard from "../../components/ContentCard.astro";
+import { getPublicContent, listPublicContent } from "../../lib/public-data";
+
+export const prerender = false;
+
+const slug = Astro.params.slug ?? "";
+const item = await getPublicContent(Astro.locals, "article", slug);
+if (!item) Astro.response.status = 404;
+const related = item
+  ? (await listPublicContent(Astro.locals, { type: "article", page: 1, limit: 4 })).items.filter((entry) => entry.id !== item.id).slice(0, 3)
+  : [];
+---
+
+<BaseLayout
+  title={item?.title ?? "文章未找到"}
+  description={item?.summary ?? "这篇文章不存在或尚未公开。"}
+  path={Astro.url.pathname}
+  image={item?.coverUrl ?? undefined}
+  type="article"
+  noindex={!item}
+>
+  {item ? (
+    <>
+      <ContentDetail item={item} backHref="/writing" backLabel="返回写作" />
+      {related.length > 0 && (
+        <section class="related-section" aria-labelledby="related-title">
+          <div class="section-heading"><div><p class="eyebrow">KEEP READING</p><h2 id="related-title">继续阅读</h2></div></div>
+          <div class="content-grid">{related.map((entry) => <ContentCard item={entry} compact />)}</div>
+        </section>
+      )}
+    </>
+  ) : (
+    <section class="not-found"><p class="eyebrow">404 / LOST RECORD</p><h1>这页记录不在公开档案里。</h1><a class="button quiet" href="/writing">返回写作 →</a></section>
+  )}
+</BaseLayout>

@@ -1,0 +1,19 @@
+---
+interface Props {
+  title: string;
+  eyebrow?: string;
+  tone?: "default" | "muted" | "accent";
+}
+
+const { title, eyebrow, tone = "default" } = Astro.props;
+---
+
+<section class:list={["section-card", `tone-${tone}`]}>
+  <header class="section-head">
+    {eyebrow && <p class="section-eyebrow">{eyebrow}</p>}
+    <h2>{title}</h2>
+  </header>
+  <div class="section-body">
+    <slot />
+  </div>
+</section>

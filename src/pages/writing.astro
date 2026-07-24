@@ -1,0 +1,46 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PageIntro from "../components/PageIntro.astro";
+import ContentCard from "../components/ContentCard.astro";
+import EmptyState from "../components/EmptyState.astro";
+import Pagination from "../components/Pagination.astro";
+import { listPublicContent } from "../lib/public-data";
+
+const requestedPage = Number.parseInt(Astro.url.searchParams.get("page") ?? "1", 10);
+const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+const tag = Astro.url.searchParams.get("tag")?.trim() || "";
+const [result, catalogue] = await Promise.all([
+  listPublicContent(Astro.locals, { type: "article", tag: tag || undefined, page, limit: 9 }),
+  listPublicContent(Astro.locals, { type: "article", page: 1, limit: 100 })
+]);
+const tags = [...new Set(catalogue.items.flatMap((item) => item.tags))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+---
+
+<BaseLayout title="写作" description="ZWAWA 的技术文章、项目笔记与思考记录。" path={Astro.url.pathname}>
+  <PageIntro
+    eyebrow="WRITING / 技术与思考"
+    title="把问题拆开，也把走过的弯路留下。"
+    description="代码、架构、工具和项目背后的判断，按可以再次找到的方式归档。"
+    count={result.total}
+  />
+
+  {tags.length > 0 && (
+    <nav class="filter-bar" aria-label="文章标签">
+      <a class:list={{ active: !tag }} href="/writing">全部</a>
+      {tags.map((item) => <a class:list={{ active: item === tag }} href={`/writing?tag=${encodeURIComponent(item)}`}>{item}</a>)}
+    </nav>
+  )}
+
+  {result.items.length > 0 ? (
+    <div class="content-grid writing-grid">
+      {result.items.map((item) => <ContentCard item={item} />)}
+    </div>
+  ) : (
+    <EmptyState
+      title={tag ? `“${tag}”下还没有公开文章` : "第一篇文章仍在打磨"}
+      description={tag ? "换一个标签，或回到全部文章。" : "准备好后，它会从这里开始。"}
+    />
+  )}
+
+  <Pagination page={result.page} totalPages={result.totalPages} pathname="/writing" params={tag ? { tag } : {}} />
+</BaseLayout>

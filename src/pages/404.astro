@@ -1,0 +1,13 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+Astro.response.status = 404;
+---
+
+<BaseLayout title="页面未找到" description="这个地址不在 ZWAWA 的公开档案中。" path={Astro.url.pathname} noindex>
+  <section class="not-found">
+    <p class="eyebrow">404 / SIGNAL LOST</p>
+    <h1>这条坐标没有连接到档案馆。</h1>
+    <a class="button quiet" href="/">返回首页 →</a>
+  </section>
+</BaseLayout>

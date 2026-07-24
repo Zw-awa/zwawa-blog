@@ -1,0 +1,51 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PageIntro from "../components/PageIntro.astro";
+import { archiveRooms, siteMeta } from "../data/site.js";
+import { getPublicSiteAssets, getPublicSiteIdentity } from "../lib/public-data";
+
+const [identity, assets] = await Promise.all([
+  getPublicSiteIdentity(Astro.locals),
+  getPublicSiteAssets(Astro.locals),
+]);
+---
+
+<BaseLayout title="关于" description="关于 ZWAWA 与这座星夜像素档案馆。" path={Astro.url.pathname}>
+  <PageIntro
+    eyebrow="ABOUT / ZWAWA"
+    title="一座个人网站，也是一份不断生长的自我档案。"
+    description="这里没有单一主题。技术让我理解系统，游戏让我和朋友共享世界，画笔与镜头则保存那些不适合写成代码的部分。"
+  />
+
+  <section class="about-profile">
+    <figure>
+      {assets.avatarUrl ? (
+        <img src={assets.avatarUrl} alt={`${identity.name} 的头像`} />
+      ) : (
+        <div class="about-avatar-placeholder" aria-hidden="true">ZW</div>
+      )}
+      <figcaption>ZWAWA / ARCHIVIST</figcaption>
+    </figure>
+    <div class="about-copy">
+      <p class="eyebrow">PERSONAL NOTE</p>
+      <h2>在逻辑严密的工程里工作，也对偶然出现的美保持敏感。</h2>
+      <p>我记录解决问题的路径，也记录夜晚联机时的一次远征、一幅画从草稿到完成的变化，以及城市里恰好落在墙角的一束光。</p>
+      <p>ZWAWA 是这些内容共同的署名。它们不必被压成同一种风格，只需要在这里彼此照见。</p>
+      <a class="button quiet" href={`mailto:${identity.email}`}>联系我 →</a>
+    </div>
+  </section>
+
+  <section class="about-index" aria-labelledby="about-index-title">
+    <div class="section-heading"><div><p class="eyebrow">ARCHIVE MAP</p><h2 id="about-index-title">档案馆索引</h2></div></div>
+    <ol>
+      {archiveRooms.map((room) => (
+        <li><a href={room.href}><span>{room.index}</span><strong>{room.title}</strong><small>{room.note}</small><i aria-hidden="true">→</i></a></li>
+      ))}
+    </ol>
+  </section>
+
+  <blockquote class="about-quote">
+    <p>“愿每一份认真做过的东西，都有一个不被信息流冲走的地址。”</p>
+    <cite>{siteMeta.url.replace("https://", "")}</cite>
+  </blockquote>
+</BaseLayout>

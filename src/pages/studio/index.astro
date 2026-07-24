@@ -1,0 +1,13 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import StudioApp from "../../components/admin/StudioApp";
+import type { StudioView } from "../../components/admin/StudioApp";
+
+const requested = Astro.url.searchParams.get("view");
+const allowed = new Set(["dashboard", "content", "media", "stats", "integrations", "settings"]);
+const initialView: StudioView = allowed.has(requested || "") ? requested as StudioView : "dashboard";
+---
+
+<AdminLayout>
+  <StudioApp client:load initialView={initialView} />
+</AdminLayout>

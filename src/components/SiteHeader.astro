@@ -1,0 +1,69 @@
+---
+import { navItems, siteMeta } from "../data/site.js";
+import { createTranslator } from "../i18n";
+
+interface Props {
+  path: string;
+  name?: string;
+  tagline?: string;
+  locale?: string;
+}
+
+const { path, name = siteMeta.title, tagline = siteMeta.tagline, locale = siteMeta.locale } = Astro.props;
+const normalizedPath = path.length > 1 ? path.replace(/\/$/, "") : path;
+const t = createTranslator(locale);
+---
+
+<header class="site-header" data-site-header>
+  <div class="header-inner">
+    <a class="brand" href="/" aria-label={`${name} 首页`}>
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-copy">
+        <strong>{name}</strong>
+        <small>{tagline}</small>
+      </span>
+    </a>
+
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" data-open-label={t("nav.open")} data-close-label={t("nav.close")}>
+      <span class="sr-only">{t("nav.open")}</span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </button>
+
+    <nav class="site-nav" id="site-navigation" aria-label={t("nav.label")}>
+      {
+        navItems.map((item) => {
+          const active = item.match === "exact"
+            ? normalizedPath === item.href
+            : normalizedPath === item.href || normalizedPath.startsWith(`${item.href}/`);
+
+          return (
+            <a class:list={["nav-link", { active }]} href={item.href} aria-current={active ? "page" : undefined}>
+              {item.label}
+            </a>
+          );
+        })
+      }
+      <a class="nav-search" href="/search" aria-label={t("nav.search")} title={t("nav.search")}>
+        <span class="search-glyph" aria-hidden="true"></span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<script is:inline>
+  (() => {
+    const header = document.querySelector("[data-site-header]");
+    const button = header?.querySelector(".nav-toggle");
+    const nav = header?.querySelector(".site-nav");
+    if (!(button instanceof HTMLButtonElement) || !(nav instanceof HTMLElement)) return;
+
+    button.addEventListener("click", () => {
+      const open = button.getAttribute("aria-expanded") === "true";
+      button.setAttribute("aria-expanded", String(!open));
+      nav.toggleAttribute("data-open", !open);
+      const label = button.querySelector(".sr-only");
+      if (label) label.textContent = open ? button.dataset.openLabel || "打开导航" : button.dataset.closeLabel || "关闭导航";
+    });
+  })();
+</script>

@@ -1,0 +1,58 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PageIntro from "../components/PageIntro.astro";
+import ContentCard from "../components/ContentCard.astro";
+import EmptyState from "../components/EmptyState.astro";
+import Pagination from "../components/Pagination.astro";
+import { gameWorlds } from "../data/site.js";
+import { listPublicContent } from "../lib/public-data";
+
+const requestedWorld = Astro.url.searchParams.get("world")?.trim() || "";
+const world = gameWorlds.find((item) => item.slug === requestedWorld);
+const requestedPage = Number.parseInt(Astro.url.searchParams.get("page") ?? "1", 10);
+const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+const result = await listPublicContent(Astro.locals, {
+  type: "game",
+  tag: world?.slug,
+  page,
+  limit: 9
+});
+---
+
+<BaseLayout title="游戏专区" description="泰拉瑞亚、我的世界与星界边境的多人世界档案。" path={Astro.url.pathname}>
+  <PageIntro
+    eyebrow="GAME WORLDS / 多人存档"
+    title="世界会重开，故事应该留下。"
+    description="联机日志、模组清单、建筑工程和旅途截图，按世界坐标重新归档。"
+    count={result.total}
+  />
+
+  <div class="world-grid" aria-label="游戏世界筛选">
+    {gameWorlds.map((item, index) => (
+      <a class:list={["world-card", { active: item.slug === world?.slug }]} href={item.slug === world?.slug ? "/games" : `/games?world=${item.slug}`}>
+        <span class="world-number">0{index + 1}</span>
+        <span class="world-mark">{item.mark}</span>
+        <div>
+          <p>{item.english}</p>
+          <h2>{item.title}</h2>
+          <span>{item.summary}</span>
+        </div>
+        <ul>{item.topics.map((topic) => <li>{topic}</li>)}</ul>
+      </a>
+    ))}
+  </div>
+
+  <section class="records-section" aria-labelledby="game-records-title">
+    <div class="section-heading">
+      <div><p class="eyebrow">FIELD NOTES</p><h2 id="game-records-title">{world ? `${world.title}档案` : "全部世界记录"}</h2></div>
+      {world && <a class="text-link" href="/games">清除筛选 ×</a>}
+    </div>
+    {result.items.length > 0 ? (
+      <div class="content-grid writing-grid">{result.items.map((item) => <ContentCard item={item} />)}</div>
+    ) : (
+      <EmptyState title={world ? `${world.title}档案柜尚未开启` : "世界记录还没有公开"} description="下一次冒险归来，这里会多一页。" />
+    )}
+  </section>
+
+  <Pagination page={result.page} totalPages={result.totalPages} pathname="/games" params={world ? { world: world.slug } : {}} />
+</BaseLayout>

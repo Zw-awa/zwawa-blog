@@ -1,0 +1,10 @@
+---
+import AdminLayout from "../../../../layouts/AdminLayout.astro";
+import StudioApp from "../../../../components/admin/StudioApp";
+
+const { id = "" } = Astro.params;
+---
+
+<AdminLayout title="编辑内容 · ZWAWA Studio">
+  <StudioApp client:load initialView="content" initialContentId={id} />
+</AdminLayout>

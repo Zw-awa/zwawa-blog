@@ -1,0 +1,26 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ContentDetail from "../../components/ContentDetail.astro";
+import { getPublicContent } from "../../lib/public-data";
+
+export const prerender = false;
+
+const slug = Astro.params.slug ?? "";
+const item = await getPublicContent(Astro.locals, "game", slug);
+if (!item) Astro.response.status = 404;
+---
+
+<BaseLayout
+  title={item?.title ?? "游戏记录未找到"}
+  description={item?.summary ?? "这条游戏记录不存在或尚未公开。"}
+  path={Astro.url.pathname}
+  image={item?.coverUrl ?? undefined}
+  type="article"
+  noindex={!item}
+>
+  {item ? (
+    <ContentDetail item={item} backHref="/games" backLabel="返回游戏专区" />
+  ) : (
+    <section class="not-found"><p class="eyebrow">404 / LOST COORDINATE</p><h1>这份世界记录没有找到。</h1><a class="button quiet" href="/games">返回游戏专区 →</a></section>
+  )}
+</BaseLayout>

@@ -1,0 +1,33 @@
+---
+import { formatPublicDate, type PublicContent } from "../lib/public-data";
+import MediaGallery from "./MediaGallery.astro";
+
+interface Props {
+  item: PublicContent;
+  backHref: string;
+  backLabel: string;
+}
+
+const { item, backHref, backLabel } = Astro.props;
+const date = formatPublicDate(item.publishedAt);
+---
+
+<article class="content-detail">
+  <a class="back-link" href={backHref}>← {backLabel}</a>
+  <header class="detail-header">
+    <div class="content-meta">
+      <span>{item.typeLabel}</span>
+      {date && <time datetime={item.publishedAt}>{date}</time>}
+    </div>
+    <h1>{item.title}</h1>
+    {item.summary && <p class="detail-summary">{item.summary}</p>}
+    {item.tags.length > 0 && (
+      <ul class="tag-list" aria-label="标签">
+        {item.tags.map((tag: string) => <li>{tag}</li>)}
+      </ul>
+    )}
+  </header>
+  {item.coverUrl && <img class="detail-cover" src={item.coverUrl} alt={item.coverAlt || item.title} />}
+  <div class="prose" set:html={item.renderedHtml}></div>
+  <MediaGallery item={item} />
+</article>

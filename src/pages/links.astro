@@ -1,0 +1,48 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PageIntro from "../components/PageIntro.astro";
+import { linkCollections } from "../data/site.js";
+import { getPublicSiteIdentity, listPublicPlatformLinks } from "../lib/public-data";
+
+const [identity, managedLinks] = await Promise.all([
+  getPublicSiteIdentity(Astro.locals),
+  listPublicPlatformLinks(Astro.locals),
+]);
+const collections = managedLinks.length
+  ? [{ title: "创作与身份", eyebrow: "IDENTITY", links: managedLinks }, ...linkCollections.slice(1)]
+  : linkCollections;
+---
+
+<BaseLayout title="链接" description="ZWAWA 的社交账号、代码仓库与写作分站。" path={Astro.url.pathname}>
+  <PageIntro
+    eyebrow="LINK HUB / 站外坐标"
+    title="散落在网络各处的我。"
+    description="视频、代码、镜像和长文各自停靠在合适的平台，这里保存它们的入口。"
+  />
+
+  <div class="link-collections">
+    {collections.map((collection) => (
+      <section class="link-section" aria-labelledby={`links-${collection.eyebrow.toLowerCase()}`}>
+        <div class="section-heading">
+          <div><p class="eyebrow">{collection.eyebrow}</p><h2 id={`links-${collection.eyebrow.toLowerCase()}`}>{collection.title}</h2></div>
+          <span>{String(collection.links.length).padStart(2, "0")}</span>
+        </div>
+        <div class="external-link-grid">
+          {collection.links.map((link) => (
+            <a href={link.href} target="_blank" rel="noreferrer">
+              <span class="external-mark">{link.mark}</span>
+              <div><strong>{link.label}</strong><small>{link.note}</small></div>
+              <i aria-hidden="true">↗</i>
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <section class="mail-line" aria-labelledby="mail-title">
+      <p class="eyebrow">DIRECT SIGNAL</p>
+      <h2 id="mail-title">写一封邮件</h2>
+      <a href={`mailto:${identity.email}`}>{identity.email}<span aria-hidden="true">→</span></a>
+    </section>
+  </div>
+</BaseLayout>

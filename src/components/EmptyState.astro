@@ -1,0 +1,19 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "这里还很安静",
+  description = "公开记录正在整理，下一次归档后再来看看。"
+} = Astro.props;
+---
+
+<div class="empty-state">
+  <span class="empty-signal" aria-hidden="true"><i></i><i></i><i></i></span>
+  <div>
+    <h2>{title}</h2>
+    <p>{description}</p>
+  </div>
+</div>

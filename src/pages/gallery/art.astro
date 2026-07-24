@@ -1,0 +1,33 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PageIntro from "../../components/PageIntro.astro";
+import GalleryItem from "../../components/GalleryItem.astro";
+import EmptyState from "../../components/EmptyState.astro";
+import Pagination from "../../components/Pagination.astro";
+import { listPublicContent } from "../../lib/public-data";
+
+const requestedPage = Number.parseInt(Astro.url.searchParams.get("page") ?? "1", 10);
+const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+const result = await listPublicContent(Astro.locals, { type: "artwork", page, limit: 12 });
+---
+
+<BaseLayout title="画作展" description="ZWAWA 的画作、草图与创作过程。" path={Astro.url.pathname}>
+  <PageIntro
+    eyebrow="GALLERY / ARTWORK"
+    title="颜色、线条，与尚未说完的角色故事。"
+    description="完成稿与草图并排陈列，保留每一次用画笔寻找答案的痕迹。"
+    count={result.total}
+  />
+
+  <nav class="gallery-switch" aria-label="作品类型">
+    <a class="active" href="/gallery/art">画作</a>
+    <a href="/gallery/photo">摄影</a>
+  </nav>
+
+  {result.items.length > 0 ? (
+    <div class="gallery-wall">{result.items.map((item, index) => <GalleryItem item={item} index={index} />)}</div>
+  ) : (
+    <EmptyState title="展墙正在布置" description="画作完成归档后，会在这里依次亮灯。" />
+  )}
+  <Pagination page={result.page} totalPages={result.totalPages} pathname="/gallery/art" />
+</BaseLayout>

@@ -1,0 +1,29 @@
+---
+import "../styles/admin.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+  login?: boolean;
+}
+
+const {
+  title = "ZWAWA Studio",
+  description = "ZWAWA 个人站内容控制台",
+  login = false,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{title}</title>
+  </head>
+  <body class:list={["admin-body", { "login-body": login }]}>
+    <slot />
+  </body>
+</html>

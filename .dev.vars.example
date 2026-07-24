@@ -1,0 +1,8 @@
+ADMIN_DEV_PASSWORD=replace-with-a-long-local-password
+ADMIN_DEV_TOKEN=replace-with-a-separate-api-token
+SESSION_SECRET=replace-with-at-least-32-random-characters
+ENVIRONMENT=development
+SITE_URL=http://localhost:4321
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_ZONE_ID=

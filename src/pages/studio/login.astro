@@ -1,0 +1,55 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { getPublicSiteAssets } from "../../lib/public-data";
+
+const returnTo = Astro.url.searchParams.get("returnTo") || "/studio";
+const assets = await getPublicSiteAssets(Astro.locals);
+---
+
+<AdminLayout title="登录 · ZWAWA Studio" login>
+  <main class="login-screen">
+    <section class="login-visual" aria-hidden="true">
+      {assets.studioLoginUrl && <img src={assets.studioLoginUrl} alt="" />}
+      <div class="login-pixel-mark">ZW</div>
+      <div class="login-visual-copy"><span>PRIVATE ARCHIVE</span><strong>把灵感保存成可以继续编辑的形状。</strong></div>
+    </section>
+    <section class="login-panel">
+      <a class="login-brand" href="/"><span>ZW</span><strong>ZWAWA</strong></a>
+      <div class="login-copy"><span>Studio access</span><h1>进入创作控制台</h1><p>使用本地开发口令继续。</p></div>
+      <form id="login-form" class="login-form">
+        <input type="hidden" name="returnTo" value={returnTo} />
+        <label><span>开发口令</span><input name="password" type="password" required autocomplete="current-password" autofocus /></label>
+        <p id="login-error" class="login-error" role="alert" hidden></p>
+        <button class="primary-button" type="submit">登录</button>
+      </form>
+      <a class="login-back" href="/">返回公开网站</a>
+    </section>
+  </main>
+  <script>
+    const form = document.querySelector("#login-form");
+    const error = document.querySelector("#login-error");
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!(form instanceof HTMLFormElement) || !(error instanceof HTMLElement)) return;
+      const button = form.querySelector("button");
+      if (button instanceof HTMLButtonElement) button.disabled = true;
+      error.hidden = true;
+      const data = new FormData(form);
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: data.get("password"), returnTo: data.get("returnTo") }),
+        });
+        const payload = await response.json() as { data?: { returnTo?: string }; error?: { message?: string } };
+        if (!response.ok) throw new Error(payload?.error?.message || "登录失败");
+        window.location.assign(payload?.data?.returnTo || "/studio");
+      } catch (reason) {
+        error.textContent = reason instanceof Error ? reason.message : "登录失败";
+        error.hidden = false;
+      } finally {
+        if (button instanceof HTMLButtonElement) button.disabled = false;
+      }
+    });
+  </script>
+</AdminLayout>

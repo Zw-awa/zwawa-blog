@@ -1,0 +1,36 @@
+---
+import { contentHref, formatPublicDate, type PublicContent } from "../lib/public-data";
+
+interface Props {
+  item: PublicContent;
+  compact?: boolean;
+}
+
+const { item, compact = false } = Astro.props;
+const href = contentHref(item);
+const date = formatPublicDate(item.publishedAt);
+---
+
+<article class:list={["content-card", { compact, "has-cover": item.coverUrl }]}>
+  {item.coverUrl && (
+    <a class="content-cover" href={href} tabindex="-1" aria-hidden="true">
+      <img src={item.coverUrl} alt="" loading="lazy" />
+    </a>
+  )}
+  <div class="content-card-body">
+    <div class="content-meta">
+      <span>{item.typeLabel}</span>
+      {date && <time datetime={item.publishedAt}>{date}</time>}
+    </div>
+    <h2><a href={href}>{item.title}</a></h2>
+    {item.summary && <p>{item.summary}</p>}
+    {item.tags.length > 0 && (
+      <ul class="tag-list" aria-label="标签">
+        {item.tags.slice(0, 4).map((tag: string) => <li>{tag}</li>)}
+      </ul>
+    )}
+    <a class="card-link" href={href} aria-label={`阅读《${item.title}》`}>
+      <span>打开记录</span><span aria-hidden="true">→</span>
+    </a>
+  </div>
+</article>

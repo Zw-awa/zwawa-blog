@@ -1,0 +1,33 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PageIntro from "../../components/PageIntro.astro";
+import GalleryItem from "../../components/GalleryItem.astro";
+import EmptyState from "../../components/EmptyState.astro";
+import Pagination from "../../components/Pagination.astro";
+import { listPublicContent } from "../../lib/public-data";
+
+const requestedPage = Number.parseInt(Astro.url.searchParams.get("page") ?? "1", 10);
+const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+const result = await listPublicContent(Astro.locals, { type: "photo", page, limit: 12 });
+---
+
+<BaseLayout title="摄影展" description="ZWAWA 的摄影作品与旅途切片。" path={Astro.url.pathname}>
+  <PageIntro
+    eyebrow="GALLERY / PHOTOGRAPHY"
+    title="镜头记住的，常常是路过时的一秒。"
+    description="街头、旅途、物件和光影。每张照片留下一句短注，也留下一点当时的空气。"
+    count={result.total}
+  />
+
+  <nav class="gallery-switch" aria-label="作品类型">
+    <a href="/gallery/art">画作</a>
+    <a class="active" href="/gallery/photo">摄影</a>
+  </nav>
+
+  {result.items.length > 0 ? (
+    <div class="gallery-wall photo-wall">{result.items.map((item, index) => <GalleryItem item={item} index={index} />)}</div>
+  ) : (
+    <EmptyState title="底片还在冲洗" description="第一组摄影专题公开后，会从这里展开。" />
+  )}
+  <Pagination page={result.page} totalPages={result.totalPages} pathname="/gallery/photo" />
+</BaseLayout>
