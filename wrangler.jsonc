@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "zwawa-blog",
+  "workers_dev": false,
+  "preview_urls": false,
   "compatibility_date": "2026-07-23",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
