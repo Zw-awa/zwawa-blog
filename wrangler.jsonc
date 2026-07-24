@@ -19,6 +19,6 @@
   ],
   "vars": {
     "ENVIRONMENT": "production",
-    "SITE_URL": "https://zwawa.dpdns.org"
+    "SITE_URL": "https://blog.zwawa.dpdns.org"
   }
 }

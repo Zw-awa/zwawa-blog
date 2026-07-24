@@ -14,7 +14,7 @@ import {
 const runtime: XmlRpcRuntime = {
   db: {} as D1DatabaseLike,
   bucket: {} as R2BucketLike,
-  siteUrl: "https://zwawa.dpdns.org",
+  siteUrl: "https://blog.zwawa.dpdns.org",
 };
 
 function dependencies(overrides: Partial<XmlRpcDependencies> = {}): XmlRpcDependencies {
@@ -123,7 +123,7 @@ describe("Wechatsync compatibility", () => {
     expect(result).toEqual({
       id: "media-1",
       file: "picture.jpg",
-      url: "https://zwawa.dpdns.org/media/media-1",
+      url: "https://blog.zwawa.dpdns.org/media/media-1",
       type: "image/jpeg",
     });
     expect(deps.storeMedia).toHaveBeenCalledWith(runtime.db, runtime.bucket, expect.objectContaining({

@@ -3,7 +3,7 @@ import cloudflare from "@astrojs/cloudflare";
 import react from "@astrojs/react";
 
 export default defineConfig({
-  site: "https://zwawa.dpdns.org",
+  site: "https://blog.zwawa.dpdns.org",
   output: "server",
   adapter: cloudflare({ imageService: "passthrough" }),
   session: { driver: sessionDrivers.lruCache() },

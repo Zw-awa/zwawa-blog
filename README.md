@@ -2,7 +2,7 @@
 
 ZWAWA 是一个运行在 Astro 与 Cloudflare Workers 上的个人内容站，包含技术写作、游戏档案、画作、摄影、私有 Studio 和 Wechatsync 草稿接收接口。
 
-当前阶段只完成本地代码与本地 Cloudflare 资源模拟，`zwawa.dpdns.org` 的正式部署、Access 策略和生产 Secrets 留到下一阶段。
+生产站运行在 Cloudflare Workers，公开地址为 `blog.zwawa.dpdns.org`；文章与设置保存在 D1，媒体保存在 R2。
 
 ## 已实现
 
