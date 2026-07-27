@@ -1,9 +1,9 @@
 import type { APIRoute } from "astro";
 import { requireAdmin } from "../../../../lib/server/auth";
-import { requireContentById, updateContent } from "../../../../lib/server/content-repository";
+import { deleteContent, requireContentById, updateContent } from "../../../../lib/server/content-repository";
 import { getDb } from "../../../../lib/server/env";
 import { AppError } from "../../../../lib/server/errors";
-import { apiHandler, ok, readJson } from "../../../../lib/server/http";
+import { apiHandler, noContent, ok, readJson } from "../../../../lib/server/http";
 import { validateContentPatch } from "../../../../lib/server/validation";
 
 export const prerender = false;
@@ -31,9 +31,6 @@ export const PUT = PATCH;
 
 export const DELETE: APIRoute = apiHandler(async (context) => {
   requireAdmin(context);
-  const db = getDb(context.locals);
-  const id = getId(context.params.id);
-  const current = await requireContentById(db, id);
-  const input = validateContentPatch({ status: "archived" }, current);
-  return ok(await updateContent(db, id, input));
+  await deleteContent(getDb(context.locals), getId(context.params.id));
+  return noContent();
 });

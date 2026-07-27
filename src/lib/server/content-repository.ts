@@ -388,6 +388,19 @@ export async function updateContent(
   return requireContentById(db, id);
 }
 
+export async function deleteContent(db: D1DatabaseLike, id: string): Promise<void> {
+  await requireContentById(db, id);
+  await db.batch([
+    db.prepare("DELETE FROM content WHERE id = ?").bind(id),
+    db.prepare(`
+      DELETE FROM tags
+      WHERE NOT EXISTS (
+        SELECT 1 FROM content_tags WHERE content_tags.tag_id = tags.id
+      )
+    `)
+  ]);
+}
+
 export async function assertPublishable(db: D1DatabaseLike, content: ContentRecord): Promise<void> {
   const missing: string[] = [];
   if (!content.title.trim()) missing.push("title");

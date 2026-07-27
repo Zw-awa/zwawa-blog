@@ -139,6 +139,7 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async (pageNumber = 1) => {
@@ -155,6 +156,22 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
 
   useEffect(() => { void load(1); }, [load]);
 
+  const remove = async (item: ContentRecord) => {
+    const publishedWarning = item.status === "published" ? "文章当前已发布，删除后公开页面会立即不可访问。\n\n" : "";
+    if (!window.confirm(`${publishedWarning}确定永久删除《${item.title}》吗？\n\n正文、修订记录和内容关联会被删除，媒体库文件会保留。此操作无法撤销。`)) return;
+    setDeletingId(item.id);
+    setError("");
+    try {
+      await studioRequest(`/api/admin/content/${encodeURIComponent(item.id)}`, { method: "DELETE" });
+      const nextPage = page.items.length === 1 && page.page > 1 ? page.page - 1 : page.page;
+      await load(nextPage);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "删除失败");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return <div className="studio-view">
     <header className="view-heading"><div><span className="view-kicker">Library</span><h1>内容管理</h1><p>{page.total} 条内容</p></div><button className="primary-button" onClick={() => onEdit()}><Plus />新建内容</button></header>
     <div className="filter-bar">
@@ -164,7 +181,7 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
     </div>
     {error && <div className="studio-alert">{error}</div>}
     <section className="content-table-wrap">
-      {loading ? <div className="studio-loading"><LoaderCircle className="spin" /> 正在读取内容</div> : page.items.length ? <table className="content-table"><thead><tr><th>标题</th><th>类型</th><th>状态</th><th>更新时间</th><th><span className="sr-only">操作</span></th></tr></thead><tbody>{page.items.map((item) => <tr key={item.id}><td><button className="content-title-button" onClick={() => onEdit(item.id)}><strong>{item.title}</strong><span>/{item.slug}</span></button></td><td>{TYPE_LABELS[item.type]}</td><td><StatusBadge status={item.status} /></td><td>{formatDate(item.updatedAt)}</td><td><button className="icon-button" title="编辑" onClick={() => onEdit(item.id)}><Pencil /></button></td></tr>)}</tbody></table> : <EmptyState title="没有符合条件的内容" />}
+      {loading ? <div className="studio-loading"><LoaderCircle className="spin" /> 正在读取内容</div> : page.items.length ? <table className="content-table"><thead><tr><th>标题</th><th>类型</th><th>状态</th><th>更新时间</th><th><span className="sr-only">操作</span></th></tr></thead><tbody>{page.items.map((item) => <tr key={item.id}><td><button className="content-title-button" onClick={() => onEdit(item.id)}><strong>{item.title}</strong><span>/{item.slug}</span></button></td><td>{TYPE_LABELS[item.type]}</td><td><StatusBadge status={item.status} /></td><td>{formatDate(item.updatedAt)}</td><td><div className="content-actions"><button className="icon-button" title="编辑" aria-label={`编辑《${item.title}》`} disabled={deletingId === item.id} onClick={() => onEdit(item.id)}><Pencil /></button><button className="icon-button danger" title="永久删除" aria-label={`永久删除《${item.title}》`} disabled={deletingId !== null} onClick={() => void remove(item)}>{deletingId === item.id ? <LoaderCircle className="spin" /> : <Trash2 />}</button></div></td></tr>)}</tbody></table> : <EmptyState title="没有符合条件的内容" />}
     </section>
     {page.totalPages > 1 && <nav className="pagination" aria-label="内容分页"><button disabled={page.page <= 1} onClick={() => void load(page.page - 1)}><ChevronLeft />上一页</button><span>{page.page} / {page.totalPages}</span><button disabled={page.page >= page.totalPages} onClick={() => void load(page.page + 1)}>下一页<ChevronRight /></button></nav>}
   </div>;

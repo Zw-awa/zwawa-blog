@@ -49,3 +49,48 @@ test("Studio login opens dashboard and Markdown editor", async ({ page }, testIn
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: testInfo.outputPath("studio-editor.png"), fullPage: true });
 });
+
+test("Studio permanently deletes content in every publication state", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "destructive content workflow only needs one browser project");
+  const adminPassword = process.env.ADMIN_DEV_PASSWORD;
+  expect(adminPassword, "ADMIN_DEV_PASSWORD must be configured in .dev.vars").toBeTruthy();
+  await page.goto("/studio");
+  await page.locator('input[name="password"]').fill(adminPassword as string);
+  await page.getByRole("button", { name: "登录" }).click();
+  await expect(page).toHaveURL(/\/studio$/);
+
+  const suffix = Date.now().toString(36);
+  for (const status of ["draft", "published", "archived"] as const) {
+    const title = `删除测试-${status}-${suffix}`;
+    const created = await page.evaluate(async ({ title, status }) => {
+      const response = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "article",
+          status,
+          title,
+          slug: title,
+          summary: "用于验证 Studio 永久删除流程。",
+          bodyMarkdown: "# 删除测试",
+        }),
+      });
+      return { status: response.status, body: await response.json() };
+    }, { title, status });
+    expect(created.status).toBe(201);
+    const id = (created.body as { data: { id: string } }).data.id;
+
+    await page.goto("/studio?view=content");
+    const search = page.getByPlaceholder("搜索标题、摘要或正文");
+    await search.fill(title);
+    await search.press("Enter");
+    await expect(page.getByRole("button", { name: `永久删除《${title}》` })).toBeVisible();
+
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: `永久删除《${title}》` }).click();
+    await expect(page.getByText("没有符合条件的内容")).toBeVisible();
+
+    const getStatus = await page.evaluate(async (id) => (await fetch(`/api/admin/content/${encodeURIComponent(id)}`)).status, id);
+    expect(getStatus).toBe(404);
+  }
+});
