@@ -3,8 +3,8 @@ export const siteMeta = {
   tagline: "星夜像素档案馆",
   description: "ZWAWA 的个人档案馆：技术写作、游戏世界、画作与摄影。",
   owner: "ZWAWA",
-  email: "hello@zwawa.dpdns.org",
-  url: "https://blog.zwawa.dpdns.org",
+  email: "hello@example.com",
+  url: "https://blog.example.com",
   locale: "zh-CN",
   keywords: ["ZWAWA", "个人博客", "技术写作", "游戏", "画作", "摄影"]
 };

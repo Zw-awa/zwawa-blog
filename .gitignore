@@ -3,6 +3,7 @@ dist/
 .astro/
 .npm-cache/
 .wrangler/
+wrangler.jsonc
 .dev.vars
 .dev.vars.*
 !.dev.vars.example

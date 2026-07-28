@@ -4,6 +4,7 @@ import ContentCard from "../components/ContentCard.astro";
 import EmptyState from "../components/EmptyState.astro";
 import { archiveRooms, gameWorlds, socialLinks } from "../data/site.js";
 import { getPublicSiteAssets, getPublicSiteIdentity, listPublicContent, listPublicPlatformLinks } from "../lib/public-data";
+import { getSiteUrl } from "../lib/server/env";
 
 const [latest, identity, assets, managedLinks] = await Promise.all([
   listPublicContent(Astro.locals, { page: 1, limit: 6 }),
@@ -12,6 +13,7 @@ const [latest, identity, assets, managedLinks] = await Promise.all([
   listPublicPlatformLinks(Astro.locals),
 ]);
 const profileLinks = managedLinks.length ? managedLinks.map((item) => ({ ...item, shortLabel: item.label })) : socialLinks;
+const siteHost = new URL(getSiteUrl(Astro.locals, Astro.url.toString())).host;
 ---
 
 <BaseLayout path={Astro.url.pathname}>
@@ -25,7 +27,7 @@ const profileLinks = managedLinks.length ? managedLinks.map((item) => ({ ...item
         <a class="button quiet" href="/gallery/art">进入作品展</a>
       </div>
       <ul class="hero-coordinates" aria-label="站点信息">
-        <li><span>DOMAIN</span>blog.zwawa.dpdns.org</li>
+        <li><span>DOMAIN</span>{siteHost}</li>
         <li><span>LANG</span>中文 / ZH-CN</li>
         <li><span>STATUS</span>持续归档中</li>
       </ul>

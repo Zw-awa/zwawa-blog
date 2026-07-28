@@ -1,13 +1,15 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import PageIntro from "../components/PageIntro.astro";
-import { archiveRooms, siteMeta } from "../data/site.js";
+import { archiveRooms } from "../data/site.js";
 import { getPublicSiteAssets, getPublicSiteIdentity } from "../lib/public-data";
+import { getSiteUrl } from "../lib/server/env";
 
 const [identity, assets] = await Promise.all([
   getPublicSiteIdentity(Astro.locals),
   getPublicSiteAssets(Astro.locals),
 ]);
+const siteHost = new URL(getSiteUrl(Astro.locals, Astro.url.toString())).host;
 ---
 
 <BaseLayout title="关于" description="关于 ZWAWA 与这座星夜像素档案馆。" path={Astro.url.pathname}>
@@ -46,6 +48,6 @@ const [identity, assets] = await Promise.all([
 
   <blockquote class="about-quote">
     <p>“愿每一份认真做过的东西，都有一个不被信息流冲走的地址。”</p>
-    <cite>{siteMeta.url.replace("https://", "")}</cite>
+    <cite>{siteHost}</cite>
   </blockquote>
 </BaseLayout>

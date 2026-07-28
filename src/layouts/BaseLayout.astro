@@ -4,6 +4,7 @@ import SiteHeader from "../components/SiteHeader.astro";
 import { siteMeta } from "../data/site.js";
 import { createTranslator } from "../i18n";
 import { getPublicSiteAssets, getPublicSiteIdentity } from "../lib/public-data";
+import { getSiteUrl } from "../lib/server/env";
 
 interface Props {
   title?: string;
@@ -28,8 +29,9 @@ const {
 } = Astro.props;
 
 const pageTitle = title === identity.name ? `${identity.name} · ${identity.tagline}` : `${title} · ${identity.name}`;
-const canonical = new URL(path, siteMeta.url).toString();
-const socialImage = image ? new URL(image, siteMeta.url).toString() : null;
+const siteUrl = getSiteUrl(Astro.locals, Astro.url.toString());
+const canonical = new URL(path, `${siteUrl}/`).toString();
+const socialImage = image ? new URL(image, `${siteUrl}/`).toString() : null;
 const t = createTranslator(identity.locale);
 ---
 
@@ -79,7 +81,6 @@ const t = createTranslator(identity.locale);
             <a href={`mailto:${identity.email}`}>{t("footer.email")}</a>
             <a href="/rss.xml">RSS</a>
             <a href="/sitemap.xml">{t("footer.sitemap")}</a>
-            <a href="/studio">Studio</a>
           </nav>
           <p class="footer-note">© {new Date().getFullYear()} {identity.name}</p>
         </div>

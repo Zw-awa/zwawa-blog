@@ -198,7 +198,12 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
     setError("");
     try {
       const path = action === "archive" ? `/api/admin/content/${id}` : `/api/admin/content/${id}/${action}`;
-      const record = await studioRequest<ContentRecord>(path, { method: action === "archive" ? "DELETE" : "POST" });
+      const record = await studioRequest<ContentRecord>(
+        path,
+        action === "archive"
+          ? { method: "PATCH", ...jsonBody({ status: "archived" }) }
+          : { method: "POST" },
+      );
       setDraft(fromRecord(record));
       onSaved?.(record);
     } catch (reason) {

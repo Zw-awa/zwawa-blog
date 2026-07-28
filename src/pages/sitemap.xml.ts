@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
-import { siteMeta } from "../data/site.js";
 import { contentHref, listAllPublicContent } from "../lib/public-data";
+import { getSiteUrl } from "../lib/server/env";
 
 export const prerender = false;
 
@@ -10,11 +10,12 @@ function xml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = async ({ locals, request }) => {
+  const siteUrl = getSiteUrl(locals, request.url);
   const records = await listAllPublicContent(locals);
   const urls = [
-    ...staticPaths.map((path) => ({ loc: new URL(path, siteMeta.url).toString(), lastmod: null })),
-    ...records.map((item) => ({ loc: new URL(contentHref(item), siteMeta.url).toString(), lastmod: item.updatedAt }))
+    ...staticPaths.map((path) => ({ loc: new URL(path, `${siteUrl}/`).toString(), lastmod: null })),
+    ...records.map((item) => ({ loc: new URL(contentHref(item), `${siteUrl}/`).toString(), lastmod: item.updatedAt }))
   ];
   const entries = urls
     .map(({ loc, lastmod }) => `<url><loc>${xml(loc)}</loc>${lastmod ? `<lastmod>${xml(lastmod)}</lastmod>` : ""}</url>`)

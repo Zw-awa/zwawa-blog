@@ -1,8 +1,10 @@
 # ZWAWA
 
-ZWAWA 是一个运行在 Astro 与 Cloudflare Workers 上的个人内容站，包含技术写作、游戏档案、画作、摄影、私有 Studio 和 Wechatsync 草稿接收接口。
+ZWAWA 是一个运行在 Astro 与 Cloudflare Workers 上的个人内容站模板，包含技术写作、游戏档案、画作、摄影、私有 Studio 和 Wechatsync 草稿接收接口。
 
-生产站运行在 Cloudflare Workers，公开地址为 `blog.zwawa.dpdns.org`；文章与设置保存在 D1，媒体保存在 R2。
+公开页面由 Workers 提供，文章与设置保存在 D1，媒体保存在 R2；站点域名与 Cloudflare 资源由部署者自行配置，不写入公开仓库。
+
+仓库中的 `ZWAWA`、示例文章和栏目文案用于展示完整界面，不代表部署者必须沿用该品牌。站点名称、描述、公开邮箱、外部链接和全站素材可在 Studio 中修改；需要彻底更换演示品牌时，再调整 `src/data/site.js` 与本地 Seed。
 
 ## 已实现
 
@@ -25,6 +27,7 @@ ZWAWA 是一个运行在 Astro 与 Cloudflare Workers 上的个人内容站，�
 ```powershell
 npm install
 Copy-Item .dev.vars.example .dev.vars
+Copy-Item wrangler.example.jsonc wrangler.jsonc
 npm run db:migrate:local
 npm run dev -- --host 127.0.0.1
 ```
@@ -36,7 +39,7 @@ npm run dev -- --host 127.0.0.1
 - 公开站：`http://127.0.0.1:4321`
 - Studio：`http://127.0.0.1:4321/studio`
 
-首次启动前应修改 `.dev.vars` 中的开发口令、API Token 与会话密钥。该文件已被 Git 忽略。
+首次启动前应修改 `.dev.vars` 中的开发口令、API Token 与会话密钥，并按需调整本地 `wrangler.jsonc`。这两个文件已被 Git 忽略。
 
 如果 Astro 已在后台运行：
 
@@ -122,15 +125,56 @@ Playwright 浏览器安装在被忽略的 `.playwright-browsers/` 中。
 
 - D1 迁移位于 `migrations/`。
 - R2 绑定名为 `MEDIA`，D1 绑定名为 `DB`。
-- 公开 GitHub 仓库只保存应用框架、迁移和示例数据；正式文章保存在 D1，文章图片与作品原图保存在 R2。
+- 公开 GitHub 仓库只保存应用框架、迁移、示例数据和 `wrangler.example.jsonc`；真实 `wrangler.jsonc`、正式文章与个人素材不进入 Git。
 - 头像、全站背景、首页主图和后台登录图同样存储在 R2，由 Studio 的“站点设置”选择。
 - `public/images/` 与 `private-assets/` 不进入 Git，公开仓库和 GitHub 自动构建不需要任何个人素材。
 - Cloudflare Analytics 需要在 Secrets 中配置 `CLOUDFLARE_API_TOKEN` 与 `CLOUDFLARE_ZONE_ID`；未配置时 Studio 明确显示不可用。
 - Markdown 输出会转义原始 HTML，并拒绝危险 URL Scheme。
 - XML-RPC 拒绝 DTD、非法 Base64、SVG 和超过 25 MB 的图片。
 - 应用密码使用 256 位随机值，D1 只保存 SHA-256 摘要，支持撤销和最近使用时间。
-- 正式环境不启用本地口令登录，应由 Cloudflare Access 保护 `/studio*`。
+- 本项目是单管理员内容站，不提供访客注册或站内账户系统。
+- 正式环境不启用本地口令登录，应由 Cloudflare Access 同时保护 `/studio*` 和 `/api/admin/*`。
+- 公开页面不展示 Studio 入口；后台地址是否隐藏不属于安全边界，仍必须依赖 Access 鉴权。
+- 不要通过未受 Access 保护的备用域名暴露同一个 Worker；建议关闭 `workers.dev` 与 Preview URLs，并只保留已配置 Access 的自定义域名。
+- Wechatsync 只能使用 Studio 生成的可撤销应用密码，不应复用邮箱、Cloudflare 或其他平台密码。
 
 ## 部署边界
 
-推荐由 Cloudflare 连接公开 GitHub 仓库并自动部署 Workers。生产环境需要单独创建真实 D1/R2、执行迁移、配置 Secrets、Cloudflare Access、域名路由和 Email Routing。不要在生产环境执行本地 Seed，也不要把本地 `database_id`、`.dev.vars` 或示例口令提交到仓库。
+推荐由 Cloudflare 连接公开 GitHub 仓库并自动部署 Workers。生产环境需要单独创建真实 D1/R2、执行迁移、配置 Secrets、Cloudflare Access、域名路由和 Email Routing。不要在生产环境执行本地 Seed，也不要把真实 `wrangler.jsonc`、`.dev.vars` 或示例口令提交到仓库。
+
+自动部署前，先在 Cloudflare Dashboard 中打开目标 Worker，然后进入“设置 → 构建 → 变量和机密”。在生产构建环境添加以下变量：
+
+| 变量 | 用途 | 示例 |
+| --- | --- | --- |
+| `DEPLOY_WORKER_NAME` | Worker 名称 | `your-blog` |
+| `DEPLOY_D1_DATABASE_NAME` | D1 数据库名称 | `your-blog-db` |
+| `DEPLOY_D1_DATABASE_ID` | D1 Database ID | `00000000-0000-0000-0000-000000000000` |
+| `DEPLOY_R2_BUCKET_NAME` | R2 存储桶名称 | `your-blog-media` |
+| `DEPLOY_SITE_URL` | 公开站点绝对地址 | `https://blog.example.com` |
+
+Worker、D1、R2 名称和站点 URL 可以使用普通构建变量；Database ID 可以设为 Secret。这里的 Secret 只用于减少个人部署信息暴露，不代表 Database ID 本身能够授权访问数据库。
+
+保持以下构建设置：
+
+```text
+Build command: npm run build
+Deploy command: npx wrangler deploy --config dist/server/wrangler.json
+```
+
+`npm run build` 检测到这组完整变量后，会在被忽略的 `.wrangler/` 目录生成临时配置；缺少任意一项都会终止构建。生成文件仅存在于当前构建环境，部署产物会自动带上 D1、R2 和 `SITE_URL` 绑定。
+
+首次切换到私有构建变量时，应按以下顺序操作：
+
+1. 在 Cloudflare 中添加并保存全部五个变量。
+2. 确认构建与部署命令和上方一致。
+3. 再推送移除真实 `wrangler.jsonc` 的代码提交。
+4. 检查首次部署日志中的 Worker 名称以及 D1、R2 绑定。
+5. 访问公开站、`/api/v1/settings` 和受 Access 保护的 `/studio` 做上线验证。
+
+需要从本机手动部署时，可以继续使用被 Git 忽略的真实 `wrangler.jsonc`：
+
+```text
+npm run deploy
+```
+
+这些变量应在推送去个人化配置前设置完成。Database ID 与桶名不是访问密钥，但仍作为个人部署信息保留在 Cloudflare 构建环境中。

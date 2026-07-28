@@ -334,7 +334,7 @@ function SettingsView() {
       <label className="field"><span>站点名称</span><input value={identity.name} onChange={(event) => setIdentity({ ...identity, name: event.target.value })} /></label>
       <label className="field"><span>站点副标题</span><input value={identity.tagline} onChange={(event) => setIdentity({ ...identity, tagline: event.target.value })} /></label>
       <label className="field field-wide"><span>站点描述</span><textarea rows={3} value={identity.description} onChange={(event) => setIdentity({ ...identity, description: event.target.value })} /></label>
-      <label className="field"><span>公开邮箱</span><input type="email" value={identity.email} placeholder="hello@zwawa.dpdns.org" onChange={(event) => setIdentity({ ...identity, email: event.target.value })} /></label>
+      <label className="field"><span>公开邮箱</span><input type="email" value={identity.email} placeholder="hello@example.com" onChange={(event) => setIdentity({ ...identity, email: event.target.value })} /></label>
       <label className="field"><span>默认语言</span><select value={identity.locale} onChange={(event) => setIdentity({ ...identity, locale: event.target.value })}><option value="zh-CN">简体中文</option><option value="en">English（预留）</option></select></label>
     </section>
     <section className="studio-section site-assets-section">

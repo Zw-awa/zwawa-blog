@@ -81,7 +81,7 @@ export interface PublicPlatformLink {
 const defaultIdentity: PublicSiteIdentity = {
   name: "ZWAWA",
   description: "技术、游戏与创作的个人档案馆",
-  email: "hello@zwawa.dpdns.org",
+  email: "hello@example.com",
   locale: "zh-CN",
   tagline: "星夜像素档案馆",
 };
