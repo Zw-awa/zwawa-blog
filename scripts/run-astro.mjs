@@ -9,6 +9,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, "..");
 const astroBin = path.join(projectRoot, "node_modules", "astro", "bin", "astro.mjs");
 const generatedConfig = command === "build" ? prepareDeployWranglerConfig(projectRoot) : null;
+const localWranglerConfig = path.join(projectRoot, ".wrangler-config");
 
 const child = spawn(process.execPath, [astroBin, command, ...extraArgs], {
   cwd: projectRoot,
@@ -16,6 +17,7 @@ const child = spawn(process.execPath, [astroBin, command, ...extraArgs], {
   env: {
     ...process.env,
     ASTRO_TELEMETRY_DISABLED: "1",
+    ...(command === "dev" && !process.env.XDG_CONFIG_HOME ? { XDG_CONFIG_HOME: localWranglerConfig } : {}),
     ...(generatedConfig ? {
       ASTRO_WRANGLER_CONFIG: generatedConfig,
       PUBLIC_SITE_URL: process.env.DEPLOY_SITE_URL,

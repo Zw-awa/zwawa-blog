@@ -13,6 +13,7 @@ export default defineConfig({
   devToolbar: { enabled: false },
   integrations: [react()],
   vite: {
+    cacheDir: "./.vite",
     optimizeDeps: { exclude: ["@astrojs/cloudflare/entrypoints/server"] },
     server: { watch: { ignored: ["**/opensource/**"] } },
     build: { chunkSizeWarningLimit: 700 }

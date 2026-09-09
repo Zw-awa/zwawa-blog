@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .astro/
+.vite/
+.wrangler-config/
 .npm-cache/
 .wrangler/
 wrangler.jsonc
