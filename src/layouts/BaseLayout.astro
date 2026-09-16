@@ -46,7 +46,6 @@ const t = createTranslator(identity.locale);
     {noindex && <meta name="robots" content="noindex,nofollow" />}
     <title>{pageTitle}</title>
     <link rel="canonical" href={canonical} />
-    <link rel="alternate" type="application/rss+xml" title={`${identity.name} RSS`} href="/rss.xml" />
     {assets.backgroundUrl && <link rel="preload" href={assets.backgroundUrl} as="image" fetchpriority="high" />}
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:type" content={type} />
@@ -77,11 +76,6 @@ const t = createTranslator(identity.locale);
             <strong>{identity.name}</strong>
             <p>{identity.tagline}，收集技术、游戏与创作的长期记录。</p>
           </div>
-          <nav aria-label="页脚导航">
-            <a href={`mailto:${identity.email}`}>{t("footer.email")}</a>
-            <a href="/rss.xml">RSS</a>
-            <a href="/sitemap.xml">{t("footer.sitemap")}</a>
-          </nav>
           <p class="footer-note">© {new Date().getFullYear()} {identity.name}</p>
         </div>
       </footer>

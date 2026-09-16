@@ -2,12 +2,9 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import PageIntro from "../components/PageIntro.astro";
 import { linkCollections } from "../data/site.js";
-import { getPublicSiteIdentity, listPublicPlatformLinks } from "../lib/public-data";
+import { listPublicPlatformLinks } from "../lib/public-data";
 
-const [identity, managedLinks] = await Promise.all([
-  getPublicSiteIdentity(Astro.locals),
-  listPublicPlatformLinks(Astro.locals),
-]);
+const managedLinks = await listPublicPlatformLinks(Astro.locals);
 const collections = managedLinks.length
   ? [{ title: "创作与身份", eyebrow: "IDENTITY", links: managedLinks }, ...linkCollections.slice(1)]
   : linkCollections;
@@ -39,10 +36,5 @@ const collections = managedLinks.length
       </section>
     ))}
 
-    <section class="mail-line" aria-labelledby="mail-title">
-      <p class="eyebrow">DIRECT SIGNAL</p>
-      <h2 id="mail-title">写一封邮件</h2>
-      <a href={`mailto:${identity.email}`}>{identity.email}<span aria-hidden="true">→</span></a>
-    </section>
   </div>
 </BaseLayout>
