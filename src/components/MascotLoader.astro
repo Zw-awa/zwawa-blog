@@ -1,0 +1,116 @@
+---
+import type { MascotTheme } from "../lib/mascot-state";
+
+interface Props {
+  theme?: MascotTheme;
+}
+
+const { theme = "dark" } = Astro.props;
+---
+
+<div
+  class="mascot-loader"
+  data-mascot-loader
+  data-mascot-theme={theme}
+  data-state="pending"
+  data-phase="connect"
+  aria-hidden="true"
+>
+  <div class="mascot-loader-canvas" aria-hidden="true">
+    <span class="mascot-loader-thread mascot-loader-thread-a"></span>
+    <span class="mascot-loader-thread mascot-loader-thread-b"></span>
+    <span class="mascot-loader-thread mascot-loader-thread-c"></span>
+    <span class="mascot-loader-node mascot-loader-node-a"></span>
+    <span class="mascot-loader-node mascot-loader-node-b"></span>
+    <span class="mascot-loader-node mascot-loader-node-c"></span>
+    <span class="mascot-spider mascot-spider-loader">
+      <i class="mascot-spider-leg mascot-spider-leg-a"></i>
+      <i class="mascot-spider-leg mascot-spider-leg-b"></i>
+      <i class="mascot-spider-leg mascot-spider-leg-c"></i>
+      <i class="mascot-spider-leg mascot-spider-leg-d"></i>
+      <b class="mascot-spider-body"></b>
+      <b class="mascot-spider-eye mascot-spider-eye-a"></b>
+      <b class="mascot-spider-eye mascot-spider-eye-b"></b>
+    </span>
+  </div>
+  <span class="sr-only" role="status" data-mascot-loader-status>正在连接档案馆</span>
+</div>
+
+<script>
+  import {
+    LOADER_MAX_DURATION,
+    LOADER_MIN_DURATION,
+    LOADER_SESSION_KEY
+  } from "../lib/mascot-state";
+
+  const loader = document.querySelector<HTMLElement>("[data-mascot-loader]");
+  if (loader && loader.dataset.ready !== "true") {
+    loader.dataset.ready = "true";
+    const status = loader.querySelector<HTMLElement>("[data-mascot-loader-status]");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let alreadySeen = false;
+
+    try {
+      alreadySeen = window.sessionStorage.getItem(LOADER_SESSION_KEY) === "1";
+      if (!alreadySeen) window.sessionStorage.setItem(LOADER_SESSION_KEY, "1");
+    } catch {
+      // Private browsing can deny storage; the loader remains non-blocking.
+    }
+
+    const setStatus = (message: string) => {
+      if (status) status.textContent = message;
+    };
+
+    if (alreadySeen) {
+      loader.dataset.state = "hidden";
+    } else {
+      const startedAt = performance.now();
+      let active = false;
+      let finished = false;
+      let phaseTimerA = 0;
+      let phaseTimerB = 0;
+
+      const show = () => {
+        active = true;
+        loader.dataset.state = "active";
+        loader.setAttribute("aria-hidden", "false");
+        setStatus("正在织网");
+      };
+
+      show();
+      phaseTimerA = window.setTimeout(() => {
+        loader.dataset.phase = "weave";
+        setStatus("正在连接档案");
+      }, reduceMotion ? 0 : 260);
+      phaseTimerB = window.setTimeout(() => {
+        loader.dataset.phase = "ready";
+        setStatus("档案馆即将打开");
+      }, reduceMotion ? 0 : 720);
+
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        window.clearTimeout(phaseTimerA);
+        window.clearTimeout(phaseTimerB);
+
+        if (!active) {
+          loader.dataset.state = "hidden";
+          return;
+        }
+
+        const minimum = reduceMotion ? 100 : LOADER_MIN_DURATION;
+        const elapsed = performance.now() - startedAt;
+        window.setTimeout(() => {
+          loader.dataset.state = "leaving";
+          loader.setAttribute("aria-hidden", "true");
+          setStatus("");
+          window.setTimeout(() => { loader.dataset.state = "hidden"; }, reduceMotion ? 80 : 460);
+        }, Math.max(0, minimum - elapsed));
+      };
+
+      if (document.readyState === "complete") finish();
+      else window.addEventListener("load", finish, { once: true });
+      window.setTimeout(finish, LOADER_MAX_DURATION);
+    }
+  }
+</script>

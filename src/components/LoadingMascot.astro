@@ -1,0 +1,132 @@
+---
+// ==============================================
+// 加载动画徽章：弹跳吉祥物 + 逐字波浪文案
+// 机制参照 Umi-OCR 的 Loading.qml（弹跳团子 + OCR... 逐字波浪），
+// 换成网页实现：CSS transform 动画负责弹跳，JS 定时器逐字点亮。
+// 用法：
+//   import LoadingMascot from "../components/LoadingMascot.astro";
+//   <LoadingMascot text="正在读取档案…" running />
+//   <LoadingMascot text="正在写入" running={false} />
+// 所在页面需要引入 mascots.css（prototype 页已引入）。
+// 无障碍：可见文字仅供视觉（aria-hidden），
+//         真实状态由 role="status" + .sr-only 提供。
+// ==============================================
+import type { MascotTheme } from "../lib/mascot-state";
+
+interface Props {
+  text?: string;
+  /** false 时不运行动画（静止展示） */
+  running?: boolean;
+  theme?: MascotTheme;
+}
+
+const { text = "正在读取档案…", running = true, theme = "dark" } = Astro.props;
+const chars = Array.from(text);
+---
+
+<div
+  class="loading-mascot"
+  data-loading-mascot
+  data-mascot-theme={theme}
+  data-state={running ? "run" : "idle"}
+  role="status"
+>
+  <span class="loading-mascot-card">
+    <span class="loading-mascot-stage" aria-hidden="true">
+      {/*
+        默认吉祥物：档案小蜘蛛。
+        与 MascotLoader.astro 共用 mascots.css 里的同一套 CSS 部件，
+        以后想换成其他吉祥物，只替换这一块标记即可。
+      */}
+      <span class="loading-mascot-creature mascot-spider">
+        <i class="mascot-spider-leg mascot-spider-leg-a"></i>
+        <i class="mascot-spider-leg mascot-spider-leg-b"></i>
+        <i class="mascot-spider-leg mascot-spider-leg-c"></i>
+        <i class="mascot-spider-leg mascot-spider-leg-d"></i>
+        <b class="mascot-spider-body"></b>
+        <b class="mascot-spider-eye mascot-spider-eye-a"></b>
+        <b class="mascot-spider-eye mascot-spider-eye-b"></b>
+      </span>
+    </span>
+    <span class="loading-mascot-wave" data-loading-mascot-wave aria-hidden="true">
+      {chars.map((ch, index) => (
+        <i data-char={index}>{ch}</i>
+      ))}
+    </span>
+    <span class="sr-only">{text}</span>
+  </span>
+</div>
+
+<script>
+  // 逐字波浪：仿 Umi-OCR Loading.qml 的 Timer 驱动方式。
+  // 用定时器推进“当前高亮字”，其余字保持半透明；离屏/减弱动画时自动停。
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const WAVE_STEP_MS = 620;
+
+  const instances = document.querySelectorAll<HTMLElement>("[data-loading-mascot]");
+
+  instances.forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+
+    const wave = root.querySelector<HTMLElement>("[data-loading-mascot-wave]");
+    const chars = wave ? Array.from(wave.querySelectorAll<HTMLElement>("i")) : [];
+    if (!wave || chars.length === 0) return;
+
+    let timer = 0;
+    let index = -1;
+
+    const step = () => {
+      if (index >= 0) chars[index]?.classList.remove("is-up");
+      index = (index + 1) % chars.length;
+      chars[index]?.classList.add("is-up");
+    };
+
+    const start = () => {
+      if (root.dataset.static === "true" || root.dataset.state !== "run") return;
+      if (timer) return;
+      index = -1;
+      timer = window.setInterval(step, WAVE_STEP_MS);
+    };
+
+    const stop = () => {
+      if (timer) {
+        window.clearInterval(timer);
+        timer = 0;
+      }
+      if (index >= 0) {
+        chars[index]?.classList.remove("is-up");
+        index = -1;
+      }
+    };
+
+    // 全局“减弱动画”：静置为可读文字，不再逐字跳动
+    if (reduceMotion) {
+      root.dataset.static = "true";
+      return;
+    }
+
+    // 可视范围内才运行动画
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries[0]?.isIntersecting ?? false;
+          root.dataset.static = visible ? "false" : "true";
+          if (visible) start();
+          else stop();
+        },
+        { threshold: 0.05 }
+      );
+      observer.observe(root);
+    }
+
+    // 由外部随时切换 data-state="run" / "idle" 即可启停
+    const watcher = new MutationObserver(() => {
+      if (root.dataset.state === "run") start();
+      else stop();
+    });
+    watcher.observe(root, { attributes: true, attributeFilter: ["data-state"] });
+
+    if (root.dataset.state === "run") start();
+  });
+</script>

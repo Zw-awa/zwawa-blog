@@ -1,0 +1,107 @@
+---
+import type { MascotTheme } from "../lib/mascot-state";
+
+interface Props {
+  theme?: MascotTheme;
+}
+
+const { theme = "dark" } = Astro.props;
+---
+
+<aside class="mascot-pet" data-mascot-pet data-mascot-theme={theme} data-state="idle" aria-label="档案馆桌宠">
+  <span class="mascot-pet-thread mascot-pet-thread-a" aria-hidden="true"></span>
+  <span class="mascot-pet-thread mascot-pet-thread-b" aria-hidden="true"></span>
+  <button class="mascot-pet-main" type="button" aria-label="和猫猫互动" title="和猫猫互动">
+    <span class="mascot-cat-art" aria-hidden="true">
+      <i class="mascot-cat-tail"></i>
+      <i class="mascot-cat-ear mascot-cat-ear-a"></i>
+      <i class="mascot-cat-ear mascot-cat-ear-b"></i>
+      <i class="mascot-cat-body"></i>
+      <i class="mascot-cat-head"></i>
+      <i class="mascot-cat-eye mascot-cat-eye-a"></i>
+      <i class="mascot-cat-eye mascot-cat-eye-b"></i>
+      <i class="mascot-cat-paw mascot-cat-paw-a"></i>
+      <i class="mascot-cat-paw mascot-cat-paw-b"></i>
+    </span>
+  </button>
+  <button class="mascot-pet-collapse" type="button" aria-label="收起猫猫" title="收起猫猫">
+    <span aria-hidden="true">×</span>
+  </button>
+  <button class="mascot-pet-recall" type="button" aria-label="召回猫猫" title="召回猫猫">
+    <span aria-hidden="true">+</span>
+  </button>
+  <span class="sr-only" role="status" data-mascot-pet-status>猫猫正在发呆</span>
+</aside>
+
+<script>
+  import { CAT_COLLAPSED_KEY, getCatStatus, getNextMascotTarget } from "../lib/mascot-state";
+
+  const pet = document.querySelector<HTMLElement>("[data-mascot-pet]");
+  if (pet && pet.dataset.ready !== "true") {
+    pet.dataset.ready = "true";
+    const main = pet.querySelector<HTMLButtonElement>(".mascot-pet-main");
+    const collapse = pet.querySelector<HTMLButtonElement>(".mascot-pet-collapse");
+    const recall = pet.querySelector<HTMLButtonElement>(".mascot-pet-recall");
+    const status = pet.querySelector<HTMLElement>("[data-mascot-pet-status]");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let stateTimer = 0;
+    let sleepTimer = 0;
+    let fetchCount = 0;
+
+    const setState = (next: Parameters<typeof getCatStatus>[0]) => {
+      pet.dataset.state = next;
+      if (status) status.textContent = getCatStatus(next);
+      const collapsed = next === "collapsed";
+      if (main) main.hidden = collapsed;
+      if (collapse) collapse.hidden = collapsed;
+      if (recall) recall.hidden = !collapsed;
+    };
+
+    const scheduleSleep = () => {
+      window.clearTimeout(sleepTimer);
+      sleepTimer = window.setTimeout(() => setState("sleep"), 15000);
+    };
+
+    try {
+      if (window.localStorage.getItem(CAT_COLLAPSED_KEY) === "1") setState("collapsed");
+    } catch {
+      // Storage is optional; the pet remains available for this visit.
+    }
+
+    const wake = () => {
+      if (pet.dataset.state === "sleep") setState("idle");
+      scheduleSleep();
+    };
+
+    main?.addEventListener("click", () => {
+      wake();
+      const targetIndex = getNextMascotTarget(fetchCount, 4);
+      fetchCount += 1;
+      window.clearTimeout(stateTimer);
+      setState("curious");
+      window.setTimeout(() => {
+        setState("fetching");
+        window.dispatchEvent(new CustomEvent("mascot:fetch", { detail: { targetIndex } }));
+      }, reduceMotion ? 0 : 260);
+      stateTimer = window.setTimeout(() => {
+        setState("idle");
+        scheduleSleep();
+      }, reduceMotion ? 180 : 1250);
+    });
+
+    collapse?.addEventListener("click", () => {
+      try { window.localStorage.setItem(CAT_COLLAPSED_KEY, "1"); } catch { /* optional */ }
+      setState("collapsed");
+    });
+
+    recall?.addEventListener("click", () => {
+      try { window.localStorage.removeItem(CAT_COLLAPSED_KEY); } catch { /* optional */ }
+      setState("idle");
+      scheduleSleep();
+    });
+
+    pet.addEventListener("pointerenter", wake, { passive: true });
+    pet.addEventListener("focusin", wake);
+    scheduleSleep();
+  }
+</script>

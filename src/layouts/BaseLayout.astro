@@ -1,6 +1,8 @@
 ---
 import "../styles/global.css";
 import SiteHeader from "../components/SiteHeader.astro";
+import CatPet from "../components/CatPet.astro";
+import MascotLoader from "../components/MascotLoader.astro";
 import { siteMeta } from "../data/site.js";
 import { createTranslator } from "../i18n";
 import { getPublicSiteAssets, getPublicSiteIdentity } from "../lib/public-data";
@@ -13,6 +15,10 @@ interface Props {
   image?: string;
   type?: "website" | "article";
   noindex?: boolean;
+  bodyClass?: string;
+  showMascotLoader?: boolean;
+  showCatPet?: boolean;
+  mascotTheme?: "dark" | "light";
 }
 
 const [identity, assets] = await Promise.all([
@@ -25,7 +31,11 @@ const {
   path = Astro.url.pathname,
   image = assets.homeHeroUrl ?? assets.backgroundUrl ?? undefined,
   type = "website",
-  noindex = false
+  noindex = false,
+  bodyClass,
+  showMascotLoader = false,
+  showCatPet = false,
+  mascotTheme = "dark"
 } = Astro.props;
 
 const pageTitle = title === identity.name ? `${identity.name} · ${identity.tagline}` : `${title} · ${identity.name}`;
@@ -62,8 +72,9 @@ const t = createTranslator(identity.locale);
       document.documentElement.classList.add("js");
     </script>
   </head>
-  <body>
+  <body class:list={[bodyClass]}>
     <a class="skip-link" href="#main-content">{t("a11y.skip")}</a>
+    {showMascotLoader && <MascotLoader theme={mascotTheme} />}
     <div class="site-backdrop" style={assets.backgroundUrl ? `--site-backdrop-image: url("${assets.backgroundUrl}")` : undefined} aria-hidden="true"></div>
     <div class="page-shell">
       <SiteHeader path={path} name={identity.name} tagline={identity.tagline} locale={identity.locale} />
@@ -80,5 +91,6 @@ const t = createTranslator(identity.locale);
         </div>
       </footer>
     </div>
+    {showCatPet && <CatPet theme={mascotTheme} />}
   </body>
 </html>
