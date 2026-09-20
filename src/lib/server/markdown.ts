@@ -188,6 +188,58 @@ interface LinkParts {
   end: number;
 }
 
+interface ImagePresentation {
+  width?: number;
+  crop?: "1:1" | "4:3" | "16:9" | "3:4" | [number, number, number, number];
+  ratio?: number;
+  position?: "center" | "top" | "bottom" | "left" | "right";
+  end: number;
+}
+
+function parseImagePresentation(value: string, start: number): ImagePresentation | null {
+  if (value[start] !== "{") return null;
+  const closing = value.indexOf("}", start + 1);
+  if (closing < 0) return null;
+  const tokens = value.slice(start + 1, closing).trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return null;
+
+  const presentation: ImagePresentation = { end: closing + 1 };
+  for (const token of tokens) {
+    const [key, setting, extra] = token.split("=");
+    if (!setting || extra !== undefined) return null;
+    if (key === "width" && /^\d{1,3}$/.test(setting)) {
+      const width = Number(setting);
+      if (width < 20 || width > 100) return null;
+      presentation.width = width;
+      continue;
+    }
+    if (key === "crop") {
+      if (/^(?:1:1|4:3|16:9|3:4)$/.test(setting)) {
+        presentation.crop = setting as ImagePresentation["crop"];
+        continue;
+      }
+      const crop = setting.split(",").map(Number);
+      if (crop.length === 4 && crop.every(Number.isFinite) && crop[0] >= 0 && crop[1] >= 0 && crop[2] >= 5 && crop[3] >= 5 && crop[0] + crop[2] <= 100.01 && crop[1] + crop[3] <= 100.01) {
+        presentation.crop = crop as [number, number, number, number];
+        continue;
+      }
+      return null;
+    }
+    if (key === "ratio" && /^\d+(?:\.\d+)?$/.test(setting)) {
+      const ratio = Number(setting);
+      if (ratio < 0.1 || ratio > 20) return null;
+      presentation.ratio = ratio;
+      continue;
+    }
+    if (key === "position" && /^(?:center|top|bottom|left|right)$/.test(setting)) {
+      presentation.position = setting as ImagePresentation["position"];
+      continue;
+    }
+    return null;
+  }
+  return presentation;
+}
+
 function parseLinkAt(value: string, start: number): LinkParts | null {
   const labelEnd = findUnescaped(value, "]", start + 1);
   if (labelEnd < 0 || value[labelEnd + 1] !== "(") return null;
@@ -306,6 +358,7 @@ function renderInline(
       if (link) {
         flushPlain();
         const destination = sanitizeUrl(link.destination);
+        const presentation = image ? parseImagePresentation(value, link.end) : null;
         // Render link labels in the requested mode. In particular, an HTML
         // label such as `[<img src=x>](https://example.com)` must remain
         // escaped rather than being inserted into the generated anchor.
@@ -319,12 +372,25 @@ function renderInline(
           output += labelText;
         } else if (image) {
           const alt = escapeHtml(plainInline(link.label, depth + 1, maxDepth));
-          output += `<img src="${escapeHtml(destination)}" alt="${alt}" loading="lazy" decoding="async">`;
+          const width = presentation?.width ? `width:${presentation.width}%` : "";
+          const legacyCrop = typeof presentation?.crop === "string" ? `aspect-ratio:${presentation.crop.replace(":", "/")};object-fit:cover` : "";
+          const position = presentation?.position ? `object-position:${presentation.position}` : "";
+          const style = [width, legacyCrop, position].filter(Boolean).join(";");
+          const attributes = presentation ? value.slice(link.end, presentation.end) : "";
+          const source = value.slice(i, link.end) + attributes;
+          if (Array.isArray(presentation?.crop) && presentation.ratio) {
+            const [x, y, cropWidth, cropHeight] = presentation.crop;
+            const frameStyle = [width || "width:100%", `aspect-ratio:${presentation.ratio}`].join(";");
+            const imageStyle = `width:${10000 / cropWidth}%;max-width:none;left:-${(x / cropWidth) * 100}%;top:-${(y / cropHeight) * 100}%`;
+            output += `<span class="markdown-image-crop" style="${frameStyle}"><img src="${escapeHtml(destination)}" alt="${alt}" loading="lazy" decoding="async" data-markdown-source="${escapeHtml(source)}" style="${imageStyle}"></span>`;
+          } else {
+            output += `<img src="${escapeHtml(destination)}" alt="${alt}" loading="lazy" decoding="async" data-markdown-source="${escapeHtml(source)}"${presentation?.crop ? ` data-image-crop="${presentation.crop}"` : ""}${style ? ` style="${style}"` : ""}>`;
+          }
         } else {
           const title = link.title ? ` title="${escapeHtml(link.title)}"` : "";
           output += `<a href="${escapeHtml(destination)}"${title}>${labelText}</a>`;
         }
-        i = link.end - 1;
+        i = (presentation?.end ?? link.end) - 1;
         continue;
       }
     }
@@ -639,8 +705,11 @@ function renderBlockHtml(block: MarkdownBlock, options: Required<MarkdownRenderO
   }
 }
 
-function renderBlocksHtml(blocks: MarkdownBlock[], options: Required<MarkdownRenderOptions>): string {
-  return blocks.map((block) => renderBlockHtml(block, options)).join("\n\n");
+function renderBlocksHtml(blocks: MarkdownBlock[], options: Required<MarkdownRenderOptions>, markBlocks = false): string {
+  return blocks.map((block, index) => {
+    const html = renderBlockHtml(block, options);
+    return markBlocks ? html.replace(/^<([a-z][a-z0-9]*)/, `<$1 data-markdown-block="${index}"`) : html;
+  }).join("\n\n");
 }
 
 function renderBlockText(block: MarkdownBlock): string {
@@ -867,7 +936,7 @@ function resolvedRenderOptions(options?: MarkdownRenderOptions): Required<Markdo
 export function renderMarkdown(source: string, options?: MarkdownRenderOptions): string {
   const parsed = parseFrontmatter(source);
   const blocks = parseBlocks(parsed.content.split("\n"));
-  return renderBlocksHtml(blocks, resolvedRenderOptions(options));
+  return renderBlocksHtml(blocks, resolvedRenderOptions(options), true);
 }
 
 export const markdownToHtml = renderMarkdown;
@@ -912,7 +981,7 @@ export function parseMarkdown(source: string, options?: MarkdownRenderOptions & 
   return {
     ...parsed,
     blocks,
-    html: renderBlocksHtml(blocks, resolved),
+    html: renderBlocksHtml(blocks, resolved, true),
     text,
     excerpt: excerptFromText(text, options),
   };

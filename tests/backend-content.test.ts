@@ -60,4 +60,17 @@ describe("Markdown boundaries", () => {
     expect(html).not.toContain('href="javascript:');
     expect(html).toContain("&lt;script&gt;");
   });
+
+  it("renders constrained image presentation settings", () => {
+    const html = markdownToHtml("![Cover](/media/cover){width=60 crop=16:9 position=top}");
+    expect(html).toContain('style="width:60%;aspect-ratio:16/9;object-fit:cover;object-position:top"');
+    expect(html).toContain('data-image-crop="16:9"');
+    expect(html).not.toContain(">{width=60");
+  });
+
+  it("leaves unsupported image settings as ordinary text", () => {
+    const html = markdownToHtml("![Cover](/media/cover){width=999 onclick=bad}");
+    expect(html).not.toContain('style="width:999');
+    expect(html).toContain("{width=999 onclick=bad}");
+  });
 });

@@ -44,6 +44,11 @@ export interface ListContentQuery {
   limit?: number;
 }
 
+export async function listTags(db: D1DatabaseLike): Promise<string[]> {
+  const result = await db.prepare("SELECT name FROM tags ORDER BY name COLLATE NOCASE").all<{ name: string }>();
+  return (result.results ?? []).map((row) => row.name);
+}
+
 const CONTENT_COLUMNS = `
   c.id, c.type, c.status, c.title, c.slug, c.summary, c.body_markdown,
   c.locale, c.translation_group, c.cover_media_id, c.metadata_json,
