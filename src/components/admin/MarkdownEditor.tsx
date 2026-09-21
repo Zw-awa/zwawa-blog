@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import CodeMirror from "@uiw/react-codemirror";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
+import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
+import ReactCrop, { type PercentCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import {
   Archive,
   Bold,
@@ -19,6 +21,7 @@ import {
   Save,
   Send,
   Upload,
+  X,
 } from "lucide-react";
 import { renderMarkdown } from "../../lib/server/markdown";
 import { jsonBody, studioRequest } from "./api";
@@ -34,6 +37,41 @@ interface EditorViewLike {
   state: { selection: { main: { from: number; to: number } }; doc: { sliceString(from: number, to: number): string } };
   dispatch(transaction: unknown): void;
   focus(): void;
+  posAtCoords(coords: { x: number; y: number }): number | null;
+}
+
+interface ImageEditState {
+  start: number;
+  end: number;
+  baseSource: string;
+  url: string;
+  alt: string;
+  width: number;
+  crop: PercentCrop;
+  imageRatio: number;
+}
+
+function imageSettings(source: string): Pick<ImageEditState, "baseSource" | "width" | "crop" | "imageRatio"> {
+  const attributes = source.match(/\{([^{}]+)\}$/);
+  const values = Object.fromEntries((attributes?.[1] || "").split(/\s+/).map((token) => token.split("=")).filter((pair) => pair.length === 2));
+  const width = Number(values.width);
+  const cropValues = (values.crop || "").split(",").map(Number);
+  const crop: PercentCrop = cropValues.length === 4 && cropValues.every(Number.isFinite)
+    ? { unit: "%", x: cropValues[0], y: cropValues[1], width: cropValues[2], height: cropValues[3] }
+    : { unit: "%", x: 0, y: 0, width: 100, height: 100 };
+  return {
+    baseSource: attributes ? source.slice(0, -attributes[0].length) : source,
+    width: Number.isFinite(width) && width >= 20 && width <= 100 ? width : 100,
+    crop,
+    imageRatio: Number(values.ratio) || 1,
+  };
+}
+
+function markdownBlockStarts(markdownText: string): number[] {
+  const starts: number[] = [];
+  const pattern = /(?:^|\n\s*\n)(?=\S)/g;
+  for (const match of markdownText.matchAll(pattern)) starts.push(match.index! + (match[0].startsWith("\n") ? match[0].length : 0));
+  return starts.length ? starts : [0];
 }
 
 const TYPE_LABELS = {
@@ -104,6 +142,8 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [previewOpen, setPreviewOpen] = useState(true);
+  const [tagHistory, setTagHistory] = useState<string[]>([]);
+  const [imageEdit, setImageEdit] = useState<ImageEditState | null>(null);
   const editorRef = useRef<EditorViewLike | null>(null);
   const importRef = useRef<HTMLInputElement | null>(null);
   const imageRef = useRef<HTMLInputElement | null>(null);
@@ -118,6 +158,10 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
       .catch((reason: Error) => setError(reason.message))
       .finally(() => setLoading(false));
   }, [contentId]);
+
+  useEffect(() => {
+    studioRequest<string[]>("/api/admin/tags").then(setTagHistory).catch(() => undefined);
+  }, []);
 
   const update = useCallback(<K extends keyof EditorDraft>(key: K, value: EditorDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -159,6 +203,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
               ...jsonBody(payload("draft")),
             });
         setDraft(fromRecord(record));
+        setTagHistory((current) => Array.from(new Set([...current, ...record.tags])).sort((a, b) => a.localeCompare(b, "zh-CN")));
         setDirty(false);
         setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }));
         onSaved?.(record);
@@ -228,21 +273,81 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
 
   const insertLine = (prefix: string, placeholder: string) => wrapSelection(prefix, "", placeholder);
 
-  const uploadImage = async (file: File) => {
+  const uploadImages = async (files: File[], position?: number) => {
+    if (!files.length) return;
     setSaving(true);
     setError("");
     try {
-      const form = new FormData();
-      form.set("file", file);
-      form.set("altText", file.name.replace(/\.[^.]+$/, ""));
-      const media = await studioRequest<MediaRecord>("/api/admin/media", { method: "POST", body: form });
-      const url = media.url || `/media/${encodeURIComponent(media.id)}`;
-      wrapSelection(`![${media.altText || "图片"}](`, ")", url);
+      const markdownImages: string[] = [];
+      for (const file of files) {
+        const form = new FormData();
+        form.set("file", file);
+        form.set("altText", file.name.replace(/\.[^.]+$/, ""));
+        const media = await studioRequest<MediaRecord>("/api/admin/media", { method: "POST", body: form });
+        const url = media.url || `/media/${encodeURIComponent(media.id)}`;
+        markdownImages.push(`![${media.altText || "图片"}](${url})`);
+      }
+
+      const view = editorRef.current;
+      if (!view) return;
+      const selection = view.state.selection.main;
+      const from = position ?? selection.from;
+      const to = position ?? selection.to;
+      const insert = markdownImages.join("\n\n");
+      view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
+      view.focus();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "图片上传失败");
     } finally {
       setSaving(false);
     }
+  };
+
+  const dropImages = (event: DragEvent<HTMLDivElement>) => {
+    const files = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith("image/"));
+    if (!files.length) return;
+    const position = editorRef.current?.posAtCoords({ x: event.clientX, y: event.clientY });
+    if (position == null) return;
+    event.preventDefault();
+    void uploadImages(files, position);
+  };
+
+  const openImageEditor = (event: ReactMouseEvent<HTMLElement>) => {
+    const image = (event.target as HTMLElement).closest("img[data-markdown-source]") as HTMLImageElement | null;
+    if (!image) return;
+    const source = image.dataset.markdownSource;
+    if (!source) return;
+    const matchingImages = Array.from(event.currentTarget.querySelectorAll<HTMLImageElement>("img[data-markdown-source]"))
+      .filter((candidate) => candidate.dataset.markdownSource === source);
+    const occurrence = matchingImages.indexOf(image);
+    let start = -1;
+    for (let index = 0, from = 0; index <= occurrence; index += 1) {
+      start = draft.bodyMarkdown.indexOf(source, from);
+      if (start < 0) return;
+      from = start + source.length;
+    }
+    setImageEdit({
+      start,
+      end: start + source.length,
+      url: image.currentSrc || image.src,
+      alt: image.alt,
+      ...imageSettings(source),
+      imageRatio: image.naturalWidth && image.naturalHeight ? image.naturalWidth / image.naturalHeight : imageSettings(source).imageRatio,
+    });
+  };
+
+  const applyImageEdit = () => {
+    if (!imageEdit) return;
+    const settings = [
+      imageEdit.width < 100 ? `width=${imageEdit.width}` : "",
+      imageEdit.crop.width < 99.99 || imageEdit.crop.height < 99.99 || imageEdit.crop.x > 0.01 || imageEdit.crop.y > 0.01
+        ? `crop=${[imageEdit.crop.x, imageEdit.crop.y, imageEdit.crop.width, imageEdit.crop.height].map((value) => Number(value.toFixed(2))).join(",")}`
+        : "",
+      imageEdit.crop.width < 99.99 || imageEdit.crop.height < 99.99 ? `ratio=${Number(((imageEdit.crop.width / imageEdit.crop.height) * imageEdit.imageRatio).toFixed(4))}` : "",
+    ].filter(Boolean);
+    const replacement = `${imageEdit.baseSource}${settings.length ? `{${settings.join(" ")}}` : ""}`;
+    update("bodyMarkdown", `${draft.bodyMarkdown.slice(0, imageEdit.start)}${replacement}${draft.bodyMarkdown.slice(imageEdit.end)}`);
+    setImageEdit(null);
   };
 
   const persistMedia = async (contentId: string, media: ContentMediaItem[], coverMediaId: string | null) => {
@@ -361,6 +466,18 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
 
       {error && <div className="studio-alert" role="alert">{error}</div>}
 
+      {imageEdit && <div className="image-editor-backdrop" role="presentation" onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setImageEdit(null);
+      }}>
+        <section className="image-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="image-editor-title">
+          <header><div><strong id="image-editor-title">调整图片</strong><span>{imageEdit.alt || "图片"}</span></div><button className="icon-button" type="button" title="关闭" onClick={() => setImageEdit(null)}><X /></button></header>
+          <div className="image-editor-sample"><ReactCrop crop={imageEdit.crop} onChange={(_, percentCrop) => setImageEdit((current) => current && ({ ...current, crop: percentCrop }))} minWidth={30} minHeight={30} keepSelection><img src={imageEdit.url} alt="" /></ReactCrop></div>
+          <label className="image-editor-range"><span>显示宽度 <strong>{imageEdit.width}%</strong></span><input type="range" min="20" max="100" step="5" value={imageEdit.width} onChange={(event) => setImageEdit((current) => current && ({ ...current, width: Number(event.target.value) }))} /></label>
+          <p className="image-editor-help">拖动裁剪框可移动选区，拖动四角或四边可自由改变范围。</p>
+          <footer><button className="secondary-button" type="button" onClick={() => setImageEdit(null)}>取消</button><button className="primary-button" type="button" onClick={applyImageEdit}>应用</button></footer>
+        </section>
+      </div>}
+
       <div className="editor-meta-grid">
         <label className="field field-wide"><span>标题</span><input value={draft.title} maxLength={200} onChange={(event) => {
           const title = event.target.value;
@@ -372,7 +489,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
         </select></label>
         <label className="field"><span>地址标识</span><input value={draft.slug} maxLength={160} onChange={(event) => update("slug", slugify(event.target.value))} placeholder="article-slug" /></label>
         <label className="field field-wide"><span>摘要</span><textarea rows={2} maxLength={500} value={draft.summary} onChange={(event) => update("summary", event.target.value)} placeholder="用于列表与搜索结果的简短说明" /></label>
-        <label className="field"><span>标签</span><input value={draft.tags.join(", ")} onChange={(event) => update("tags", event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))} placeholder="Astro, Cloudflare" /></label>
+        <label className="field"><span>标签</span><input list="tag-history" value={draft.tags.join(", ")} onChange={(event) => update("tags", event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))} placeholder="Astro, Cloudflare" /><datalist id="tag-history">{tagHistory.map((tag) => <option key={tag} value={tag} />)}</datalist></label>
         <label className="field"><span>语言</span><select value={draft.locale} onChange={(event) => update("locale", event.target.value)}><option value="zh-CN">简体中文</option><option value="en">English（预留）</option></select></label>
         {metadataFields(draft.type).map((item) => <label className="field" key={item.key}><span>{item.label}</span><input value={draft.metadata[item.key] || ""} onChange={(event) => {
           setDraft((current) => ({ ...current, metadata: { ...current.metadata, [item.key]: event.target.value } }));
@@ -402,25 +519,39 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
         <button type="button" title="行内代码" onClick={() => wrapSelection("`", "`", "code")}><Code2 /></button>
         <button type="button" title="列表" onClick={() => insertLine("- ", "列表项")}><List /></button>
         <button type="button" title="引用" onClick={() => insertLine("> ", "引用内容")}><Quote /></button>
-        <input ref={imageRef} type="file" accept="image/*" hidden onChange={(event) => event.target.files?.[0] && void uploadImage(event.target.files[0])} />
+        <input ref={imageRef} type="file" accept="image/*" hidden onChange={(event) => event.target.files?.[0] && void uploadImages([event.target.files[0]])} />
         <button type="button" title="上传图片" onClick={() => imageRef.current?.click()}><ImagePlus /></button>
         <span className="toolbar-spacer" />
         <button className={previewOpen ? "active" : ""} type="button" title="切换预览" onClick={() => setPreviewOpen((value) => !value)}><Eye /></button>
       </div>
 
       <div className={`markdown-workspace ${previewOpen ? "with-preview" : ""}`}>
-        <div className="markdown-source" aria-label="Markdown 编辑区">
+        <div
+          className="markdown-source"
+          aria-label="Markdown 编辑区"
+          onDragOver={(event) => {
+            if (Array.from(event.dataTransfer.items).some((item) => item.kind === "file" && item.type.startsWith("image/"))) event.preventDefault();
+          }}
+          onDrop={dropImages}
+        >
           <CodeMirror
             value={draft.bodyMarkdown}
             height="100%"
             minHeight="520px"
-            extensions={[markdown()]}
+            extensions={[markdown(), EditorView.lineWrapping]}
             onCreateEditor={(view) => { editorRef.current = view as unknown as EditorViewLike; }}
             onChange={(value) => update("bodyMarkdown", value)}
             basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true }}
           />
         </div>
-        {previewOpen && <article className="markdown-preview prose" dangerouslySetInnerHTML={{ __html: previewHtml || "<p class=\"empty-copy\">预览将在这里显示。</p>" }} />}
+        {previewOpen && <article className="markdown-preview prose" title="单击内容可定位源码，双击图片可调整大小和裁剪" onClick={(event) => {
+          const block = (event.target as HTMLElement).closest<HTMLElement>("[data-markdown-block]");
+          const index = Number(block?.dataset.markdownBlock);
+          const position = markdownBlockStarts(draft.bodyMarkdown)[index];
+          if (!Number.isFinite(position) || !editorRef.current) return;
+          editorRef.current.dispatch({ selection: { anchor: position }, scrollIntoView: true });
+          editorRef.current.focus();
+        }} onDoubleClick={openImageEditor} dangerouslySetInnerHTML={{ __html: previewHtml || "<p class=\"empty-copy\">预览将在这里显示。</p>" }} />}
       </div>
     </section>
   );
