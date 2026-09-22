@@ -5,13 +5,81 @@ async function expectNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width + 1);
 }
 
+async function waitForMascotLoader(page: import("@playwright/test").Page) {
+  await expect(page.locator("[data-mascot-loader]")).toHaveAttribute("data-state", "hidden", { timeout: 2_500 });
+}
+
 test("public archive renders seeded content without overflow", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "ZWAWA 星夜像素档案馆", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "欢迎来到 ZWAWA 档案馆", exact: true })).toBeVisible();
   await expect(page.locator('.site-footer a[href="/studio"]')).toHaveCount(0);
+  await expect(page.locator("[data-mascot-loader], [data-mascot-pet]")).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: testInfo.outputPath("home.png"), fullPage: true });
+});
+
+test("digital archive prototype renders its visual system without overflow", async ({ page }, testInfo) => {
+  await page.goto("/prototype");
+  await waitForMascotLoader(page);
+  await expect(page.getByRole("heading", { name: "ZWAWA 星夜像素档案馆", exact: true })).toBeVisible();
+  await expect(page.locator("[data-prototype-page]")).toBeVisible();
+  await expect(page.getByRole("link", { name: "打开最新记录" })).toBeVisible();
+  await expect(page.locator(".prototype-room")).toHaveCount(4);
+  await expectNoHorizontalOverflow(page);
+  await page.evaluate(async () => {
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    for (let y = 0; y < document.documentElement.scrollHeight; y += window.innerHeight) {
+      window.scrollTo(0, y);
+      await new Promise((resolve) => setTimeout(resolve, 760));
+    }
+    window.scrollTo(0, 0);
+    root.style.scrollBehavior = previousScrollBehavior;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.screenshot({ path: testInfo.outputPath("prototype.png"), fullPage: true });
+});
+
+test("prototype mascot layer loads once and lets the cat dispatch a spider", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "desk pet interaction is desktop-only");
+  await page.addInitScript(() => {
+    window.sessionStorage.removeItem("zwawa-mascot-loader-seen-v1");
+    window.localStorage.removeItem("zwawa-cat-pet-collapsed-v1");
+  });
+  await page.goto("/prototype", { waitUntil: "domcontentloaded" });
+
+  const loader = page.locator("[data-mascot-loader]");
+  await expect(loader).toHaveAttribute("data-state", "active", { timeout: 1_200 });
+  await waitForMascotLoader(page);
+
+  const pet = page.locator("[data-mascot-pet]");
+  const threadMap = page.locator("[data-prototype-thread-map]");
+  await expect(pet).toBeVisible();
+  await page.getByRole("button", { name: "和猫猫互动" }).click();
+  await expect(pet).toHaveAttribute("data-state", "curious");
+  await expect(threadMap).toHaveClass(/is-pulsing/, { timeout: 1_000 });
+  await expect(threadMap).toHaveAttribute("data-pulse-index", "0");
+
+  await pet.hover();
+  await page.getByRole("button", { name: "收起猫猫" }).click();
+  await expect(pet).toHaveAttribute("data-state", "collapsed");
+  await page.getByRole("button", { name: "召回猫猫" }).click();
+  await expect(pet).toHaveAttribute("data-state", "idle");
+
+  await page.reload();
+  await waitForMascotLoader(page);
+});
+
+test("digital archive prototype respects reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/prototype");
+  await waitForMascotLoader(page);
+  const opacity = await page.locator("[data-prototype-reveal]").first().evaluate((element) => getComputedStyle(element).opacity);
+  expect(opacity).toBe("1");
+  const catAnimation = await page.locator(".mascot-cat-art").evaluate((element) => getComputedStyle(element).animationName);
+  expect(catAnimation).toBe("none");
 });
 
 test("public metadata and discovery endpoints share the configured site origin", async ({ page, request }) => {
@@ -55,6 +123,14 @@ test("mobile navigation opens and remains inside the viewport", async ({ page },
   await expect(page.getByRole("link", { name: "游戏", exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: testInfo.outputPath("mobile-navigation.png"), fullPage: true });
+});
+
+test("prototype hides the desk pet on mobile", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "mobile-only mascot behavior");
+  await page.goto("/prototype");
+  await waitForMascotLoader(page);
+  await expect(page.locator("[data-mascot-pet]")).toBeHidden();
+  await expectNoHorizontalOverflow(page);
 });
 
 test("Studio login opens dashboard and Markdown editor", async ({ page }, testInfo) => {
