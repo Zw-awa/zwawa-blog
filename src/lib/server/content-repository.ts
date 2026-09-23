@@ -40,6 +40,7 @@ export interface ListContentQuery {
   tag?: string;
   search?: string;
   locale?: string;
+  sort?: "newest" | "oldest";
   page?: number;
   limit?: number;
 }
@@ -184,14 +185,14 @@ export async function listContent(
     .bind(...values)
     .first<{ total: number }>();
   const total = Number(countRow?.total ?? 0);
+  const sortDirection = query.sort === "oldest" ? "ASC" : "DESC";
   const rows = await db
     .prepare(`
       SELECT ${CONTENT_COLUMNS}
       FROM content c
       ${clause}
       ORDER BY
-        CASE WHEN c.status = 'published' THEN 0 ELSE 1 END,
-        COALESCE(c.published_at, c.updated_at) DESC,
+        COALESCE(c.published_at, c.updated_at) ${sortDirection},
         c.id DESC
       LIMIT ? OFFSET ?
     `)

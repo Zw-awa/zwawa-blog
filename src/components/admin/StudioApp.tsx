@@ -138,6 +138,7 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -145,14 +146,14 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
   const load = useCallback(async (pageNumber = 1) => {
     setLoading(true);
     setError("");
-    const params = new URLSearchParams({ page: String(pageNumber), limit: "20" });
+    const params = new URLSearchParams({ page: String(pageNumber), limit: "20", sort });
     if (type) params.set("type", type);
     if (status) params.set("status", status);
     if (query) params.set("search", query);
     try { setPage(await studioRequest<PageResult<ContentRecord>>(`/api/admin/content?${params}`)); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "内容读取失败"); }
     finally { setLoading(false); }
-  }, [query, status, type]);
+  }, [query, sort, status, type]);
 
   useEffect(() => { void load(1); }, [load]);
 
@@ -178,6 +179,7 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
       <form className="studio-search" onSubmit={(event) => { event.preventDefault(); setQuery(search.trim()); }}><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索标题、摘要或正文" /><button type="submit">搜索</button></form>
       <select aria-label="内容类型" value={type} onChange={(event) => setType(event.target.value)}><option value="">全部类型</option>{Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
       <select aria-label="发布状态" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">全部状态</option>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+      <select aria-label="排序方式" value={sort} onChange={(event) => setSort(event.target.value as "newest" | "oldest")}><option value="newest">时间最新</option><option value="oldest">时间最早</option></select>
     </div>
     {error && <div className="studio-alert">{error}</div>}
     <section className="content-table-wrap">
