@@ -38,6 +38,19 @@ describe("content validation", () => {
     };
     expect(validateContentPatch({ status: "draft" }, current).publishedAt).toBeNull();
   });
+
+  it("preserves a future publication date for scheduled content", () => {
+    const publishAt = "2030-01-02T03:04:00.000Z";
+    const value = validateContentCreate({
+      type: "article",
+      status: "scheduled",
+      title: "Scheduled",
+      slug: "scheduled",
+      publishedAt: publishAt
+    });
+    expect(value.status).toBe("scheduled");
+    expect(value.publishedAt).toBe(publishAt);
+  });
 });
 
 describe("Markdown boundaries", () => {

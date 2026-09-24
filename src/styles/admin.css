@@ -86,6 +86,7 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; stroke-width: 1.8; }
 .recent-copy small { margin-top: 3px; color: var(--studio-muted); font-size: 11px; }
 .status-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 3px; font-size: 11px; font-weight: 700; }
 .status-draft { background: #f1eadb; color: #835c1c; }
+.status-scheduled { background: #e3eaef; color: #3c6075; }
 .status-published { background: var(--studio-green-soft); color: var(--studio-green); }
 .status-archived { background: #ececea; color: #666a65; }
 
@@ -145,9 +146,9 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; stroke-width: 1.8; }
 .toolbar-spacer { flex: 1; }
 .markdown-workspace { display: grid; grid-template-columns: 1fr; height: min(720px, calc(100vh - 250px)); min-height: 520px; overflow: hidden; background: white; align-items: stretch; }
 .markdown-workspace.with-preview { grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr); }
-.markdown-source { min-width: 0; min-height: 0; border-right: 1px solid var(--studio-line); overflow: hidden; overscroll-behavior: contain; }
-.markdown-source .cm-editor { height: 100%; min-height: 0; background: #fff; font: 14px/1.7 "Cascadia Code", "SFMono-Regular", Consolas, monospace; }
-.markdown-source .cm-scroller { height: 100%; max-height: 100%; min-height: 0; overflow: auto; }
+.markdown-source { position: relative; min-width: 0; min-height: 0; border-right: 1px solid var(--studio-line); overflow: hidden; overscroll-behavior: contain; }
+.markdown-source .cm-editor { position: absolute; inset: 0; min-height: 0; background: #fff; font: 14px/1.7 "Cascadia Code", "SFMono-Regular", Consolas, monospace; }
+.markdown-source .cm-scroller { min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .markdown-source .cm-content { padding: 18px 8px; }
 .markdown-source .cm-gutters { border-right: 1px solid #edf0eb; background: #f8f9f6; color: #9ba29a; }
 .markdown-preview { min-width: 0; min-height: 0; padding: 30px clamp(22px, 4vw, 54px) 70px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; background: #fcfcfa; }

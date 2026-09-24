@@ -1,5 +1,5 @@
 export const CONTENT_TYPES = ["article", "game", "artwork", "photo"] as const;
-export const CONTENT_STATUSES = ["draft", "published", "archived"] as const;
+export const CONTENT_STATUSES = ["draft", "scheduled", "published", "archived"] as const;
 
 export type ContentType = (typeof CONTENT_TYPES)[number];
 export type ContentStatus = (typeof CONTENT_STATUSES)[number];

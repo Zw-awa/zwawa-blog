@@ -1,6 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity,
   BarChart3,
   BookOpenText,
   CheckCircle2,
@@ -22,6 +21,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Send,
   Settings,
   Trash2,
   Upload,
@@ -49,7 +49,7 @@ const NAV_ITEMS: Array<{ id: StudioView; label: string; icon: typeof LayoutDashb
 ];
 
 const TYPE_LABELS: Record<ContentType, string> = { article: "文章", game: "游戏", artwork: "画作", photo: "摄影" };
-const STATUS_LABELS: Record<ContentStatus, string> = { draft: "草稿", published: "已发布", archived: "已归档" };
+const STATUS_LABELS: Record<ContentStatus, string> = { draft: "草稿", scheduled: "定时发布", published: "已发布", archived: "已归档" };
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "-";
@@ -107,6 +107,7 @@ function DashboardView({ onEdit, onNavigate }: { onEdit: (id?: string) => void; 
       total: rows.length ? rows.reduce((sum, row) => sum + Number(row.count || 0), 0) : content.length,
       published: rows.length ? countStatus("published") : content.filter((item) => item.status === "published").length,
       draft: rows.length ? countStatus("draft") : content.filter((item) => item.status === "draft").length,
+      scheduled: rows.length ? countStatus("scheduled") : content.filter((item) => item.status === "scheduled").length,
       links: links.filter((item) => item.isHealthy === true || item.is_healthy === 1).length,
     };
   }, [content, stats]);
@@ -119,7 +120,7 @@ function DashboardView({ onEdit, onNavigate }: { onEdit: (id?: string) => void; 
       <button onClick={() => onNavigate("content")}><span>全部内容</span><strong>{counts.total}</strong><FileText /></button>
       <button onClick={() => onNavigate("content")}><span>已发布</span><strong>{counts.published}</strong><CheckCircle2 /></button>
       <button onClick={() => onNavigate("content")}><span>待完善草稿</span><strong>{counts.draft}</strong><Pencil /></button>
-      <button onClick={() => onNavigate("stats")}><span>健康链接</span><strong>{counts.links || "-"}</strong><Activity /></button>
+      <button onClick={() => onNavigate("content")}><span>定时发布</span><strong>{counts.scheduled}</strong><Send /></button>
     </div>
     <section className="studio-section">
       <div className="section-title-row"><div><span>最近更新</span><h2>继续上次的工作</h2></div><button className="text-button" onClick={() => onNavigate("content")}>查看全部<ChevronRight /></button></div>

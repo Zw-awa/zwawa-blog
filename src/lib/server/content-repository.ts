@@ -37,6 +37,7 @@ interface TagRow {
 export interface ListContentQuery {
   type?: ContentType;
   status?: ContentStatus;
+  publicOnly?: boolean;
   tag?: string;
   search?: string;
   locale?: string;
@@ -157,9 +158,16 @@ export async function listContent(
     where.push("c.type = ?");
     values.push(query.type);
   }
-  if (query.status) {
+  if (query.publicOnly) {
+    where.push("((c.status = 'published' AND c.published_at <= ?) OR (c.status = 'scheduled' AND c.published_at <= ?))");
+    const now = new Date().toISOString();
+    values.push(now, now);
+  } else if (query.status) {
     where.push("c.status = ?");
     values.push(query.status);
+  } else {
+    where.push("(c.status != 'scheduled' OR c.published_at > ?)");
+    values.push(new Date().toISOString());
   }
   if (query.locale) {
     where.push("c.locale = ?");
@@ -212,7 +220,7 @@ export function listPublishedContent(
   db: D1DatabaseLike,
   query: Omit<ListContentQuery, "status"> = {}
 ): Promise<PaginatedResult<ContentRecord>> {
-  return listContent(db, { ...query, status: "published" });
+  return listContent(db, { ...query, publicOnly: true });
 }
 
 export async function getContentById(db: D1DatabaseLike, id: string): Promise<ContentRecord | null> {
@@ -235,8 +243,8 @@ export async function getPublishedContentBySlug(
   slug: string
 ): Promise<ContentRecord | null> {
   const row = await db
-    .prepare(`SELECT ${CONTENT_COLUMNS} FROM content c WHERE c.type = ? AND c.slug = ? AND c.status = 'published'`)
-    .bind(type, slug)
+    .prepare(`SELECT ${CONTENT_COLUMNS} FROM content c WHERE c.type = ? AND c.slug = ? AND c.status IN ('published', 'scheduled') AND c.published_at <= ?`)
+    .bind(type, slug, new Date().toISOString())
     .first<ContentRow>();
   return row ? (await attachTags(db, [row]))[0] : null;
 }
@@ -251,9 +259,9 @@ export async function findSlugRedirect(
       SELECT r.content_id, c.type, c.slug
       FROM slug_redirects r
       JOIN content c ON c.id = r.content_id
-      WHERE r.type = ? AND r.old_slug = ? AND c.status = 'published'
+      WHERE r.type = ? AND r.old_slug = ? AND c.status IN ('published', 'scheduled') AND c.published_at <= ?
     `)
-    .bind(type, oldSlug)
+    .bind(type, oldSlug, new Date().toISOString())
     .first<{ content_id: string; type: ContentType; slug: string }>();
   return row ? { contentId: row.content_id, type: row.type, slug: row.slug } : null;
 }

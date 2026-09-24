@@ -110,6 +110,14 @@ function slugify(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
+function toLocalDateTime(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 function metadataFields(type: EditorDraft["type"]): Array<{ key: string; label: string; placeholder: string }> {
   if (type === "game") {
     return [
@@ -171,7 +179,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
   const payload = useCallback(
     (status = draft.status) => ({
       type: draft.type,
-      status,
+      status: status === "published" && draft.publishedAt && Date.parse(draft.publishedAt) > Date.now() ? "scheduled" : status,
       title: draft.title.trim(),
       slug: draft.slug.trim() || slugify(draft.title),
       summary: draft.summary.trim(),
@@ -181,7 +189,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
       coverMediaId: draft.coverMediaId,
       metadata: Object.fromEntries(Object.entries(draft.metadata).filter(([, value]) => value !== "")),
       tags: draft.tags,
-      publishedAt: status === "published" ? draft.publishedAt : null,
+      publishedAt: status === "published" || status === "scheduled" ? draft.publishedAt : null,
     }),
     [draft],
   );
@@ -235,18 +243,18 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [dirty]);
 
-  const changeStatus = async (action: "publish" | "unpublish" | "archive") => {
+  const changeStatus = async (action: "publish" | "unpublish" | "archive" | "schedule") => {
     const saved = await save();
     const id = saved?.id || draft.id;
     if (!id) return;
     setSaving(true);
     setError("");
     try {
-      const path = action === "archive" ? `/api/admin/content/${id}` : `/api/admin/content/${id}/${action}`;
+      const path = action === "archive" || action === "schedule" ? `/api/admin/content/${id}` : `/api/admin/content/${id}/${action}`;
       const record = await studioRequest<ContentRecord>(
         path,
-        action === "archive"
-          ? { method: "PATCH", ...jsonBody({ status: "archived" }) }
+        action === "archive" || action === "schedule"
+          ? { method: "PATCH", ...jsonBody(action === "archive" ? { status: "archived" } : { status: "scheduled", publishedAt: draft.publishedAt }) }
           : { method: "POST" },
       );
       setDraft(fromRecord(record));
@@ -455,11 +463,14 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
           <button className="secondary-button" type="button" onClick={() => importRef.current?.click()}><Upload />导入</button>
           {draft.id && <a className="secondary-button" href={`/api/admin/content/${draft.id}/export`}><Download />导出</a>}
           <button className="secondary-button" type="button" disabled={saving || !draft.title.trim()} onClick={() => void save()}>{saving ? <LoaderCircle className="spin" /> : <Save />}保存</button>
-          {draft.status === "published" ? (
+          {draft.status === "scheduled" ? (
+            <button className="primary-button" type="button" onClick={() => void changeStatus("unpublish")}><X />取消定时</button>
+          ) : draft.status === "published" ? (
             <button className="primary-button" type="button" onClick={() => void changeStatus("unpublish")}><Check />已发布 · 撤回</button>
           ) : (
             <button className="primary-button" type="button" disabled={!draft.title.trim()} onClick={() => void changeStatus("publish")}><Send />发布</button>
           )}
+          {draft.status !== "published" && draft.status !== "scheduled" && <button className="secondary-button" type="button" disabled={!draft.title.trim() || !draft.publishedAt || Date.parse(draft.publishedAt) <= Date.now()} onClick={() => void changeStatus("schedule")} title="设置未来的发布时间"><Send />定时发布</button>}
           {draft.id && <button className="icon-button danger" type="button" onClick={() => void changeStatus("archive")} title="归档"><Archive /></button>}
         </div>
       </header>
@@ -491,6 +502,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
         <label className="field field-wide"><span>摘要</span><textarea rows={2} maxLength={500} value={draft.summary} onChange={(event) => update("summary", event.target.value)} placeholder="用于列表与搜索结果的简短说明" /></label>
         <label className="field"><span>标签</span><input list="tag-history" value={draft.tags.join(", ")} onChange={(event) => update("tags", event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))} placeholder="Astro, Cloudflare" /><datalist id="tag-history">{tagHistory.map((tag) => <option key={tag} value={tag} />)}</datalist></label>
         <label className="field"><span>语言</span><select value={draft.locale} onChange={(event) => update("locale", event.target.value)}><option value="zh-CN">简体中文</option><option value="en">English（预留）</option></select></label>
+        <label className="field"><span>发布时间</span><input type="datetime-local" value={toLocalDateTime(draft.publishedAt)} onChange={(event) => update("publishedAt", event.target.value ? new Date(event.target.value).toISOString() : null)} /></label>
         {metadataFields(draft.type).map((item) => <label className="field" key={item.key}><span>{item.label}</span><input value={draft.metadata[item.key] || ""} onChange={(event) => {
           setDraft((current) => ({ ...current, metadata: { ...current.metadata, [item.key]: event.target.value } }));
           setDirty(true);
@@ -537,7 +549,6 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
           <CodeMirror
             value={draft.bodyMarkdown}
             height="100%"
-            minHeight="520px"
             extensions={[markdown(), EditorView.lineWrapping]}
             onCreateEditor={(view) => { editorRef.current = view as unknown as EditorViewLike; }}
             onChange={(value) => update("bodyMarkdown", value)}

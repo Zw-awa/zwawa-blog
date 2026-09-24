@@ -1,5 +1,5 @@
 export type ContentType = "article" | "game" | "artwork" | "photo";
-export type ContentStatus = "draft" | "published" | "archived";
+export type ContentStatus = "draft" | "scheduled" | "published" | "archived";
 
 export interface ContentRecord {
   id: string;

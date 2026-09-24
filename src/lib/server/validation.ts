@@ -112,7 +112,9 @@ export function validateContentCreate(value: unknown): ContentWriteInput {
     coverMediaId: nullableString(input.coverMediaId, "coverMediaId", 100),
     metadata: jsonObject(input.metadata, "metadata"),
     tags: tagList(input.tags),
-    publishedAt: status === "published" ? isoDate(input.publishedAt, "publishedAt") ?? new Date().toISOString() : null
+    publishedAt: status === "published" || status === "scheduled"
+      ? isoDate(input.publishedAt, "publishedAt") ?? (status === "published" ? new Date().toISOString() : null)
+      : null
   };
 }
 
