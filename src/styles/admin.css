@@ -155,6 +155,8 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; stroke-width: 1.8; }
 .markdown-preview { min-width: 0; min-height: 0; padding: 30px clamp(22px, 4vw, 54px) 70px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; background: #fcfcfa; }
 .markdown-preview img[data-markdown-source] { cursor: zoom-in; }
 .markdown-preview img[data-markdown-source]:hover { outline: 2px solid rgba(31,107,79,0.45); outline-offset: 3px; }
+.markdown-preview .markdown-image-crop { position: relative; display: block; max-width: 100%; margin: 2rem auto; overflow: hidden; border: 1px solid var(--studio-line); border-radius: 4px; }
+.markdown-preview .markdown-image-crop img { position: absolute; height: auto; margin: 0; border: 0; border-radius: 0; }
 .markdown-preview [data-markdown-block] { cursor: pointer; }
 .image-editor-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(15,20,17,0.68); }
 .image-editor-dialog { width: min(680px, 100%); max-height: calc(100vh - 40px); padding: 18px; overflow-y: auto; border: 1px solid var(--studio-line-strong); border-radius: var(--studio-radius); background: var(--studio-surface); box-shadow: 0 24px 70px rgba(0,0,0,0.28); }
