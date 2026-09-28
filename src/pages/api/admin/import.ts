@@ -4,7 +4,7 @@ import { createContent, getContentById, updateContent } from "../../../lib/serve
 import { getDb } from "../../../lib/server/env";
 import { AppError } from "../../../lib/server/errors";
 import { apiHandler, ok, readJson } from "../../../lib/server/http";
-import { extractExcerpt, parseFrontmatter } from "../../../lib/server/markdown";
+import { parseFrontmatter } from "../../../lib/server/markdown";
 import { validateContentCreate, validateContentPatch } from "../../../lib/server/validation";
 
 export const prerender = false;
@@ -15,10 +15,10 @@ function scalar(value: unknown): string | undefined {
 
 export const POST: APIRoute = apiHandler(async (context) => {
   requireAdmin(context);
-  const payload = await readJson<{ markdown?: unknown; commit?: unknown; confirm?: unknown }>(context.request, 2_200_000);
+  const payload = await readJson<{ markdown?: unknown; targetId?: unknown; commit?: unknown; confirm?: unknown }>(context.request, 2_200_000);
   if (typeof payload.markdown !== "string") throw new AppError(422, "validation_error", "markdown 必须是字符串。" );
   const parsed = parseFrontmatter(payload.markdown);
-  const id = scalar(parsed.data.id);
+  const id = scalar(payload.targetId) ?? scalar(parsed.data.id);
   const db = getDb(context.locals);
   const existing = id ? await getContentById(db, id) : null;
   const cover = scalar(parsed.data.cover);
@@ -27,7 +27,7 @@ export const POST: APIRoute = apiHandler(async (context) => {
     status: "draft",
     title: scalar(parsed.data.title) ?? existing?.title ?? "未命名草稿",
     slug: scalar(parsed.data.slug) ?? undefined,
-    summary: scalar(parsed.data.summary) ?? extractExcerpt(parsed.content, 180),
+    summary: "",
     bodyMarkdown: parsed.content,
     locale: scalar(parsed.data.locale) ?? existing?.locale ?? "zh-CN",
     translationGroup: scalar(parsed.data.translationGroup) ?? existing?.translationGroup ?? null,
