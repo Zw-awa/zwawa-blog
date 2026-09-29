@@ -165,9 +165,6 @@ export async function listContent(
   } else if (query.status) {
     where.push("c.status = ?");
     values.push(query.status);
-  } else {
-    where.push("(c.status != 'scheduled' OR c.published_at > ?)");
-    values.push(new Date().toISOString());
   }
   if (query.locale) {
     where.push("c.locale = ?");

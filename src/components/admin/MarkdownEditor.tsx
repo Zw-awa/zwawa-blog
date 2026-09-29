@@ -157,6 +157,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
   const imageRef = useRef<HTMLInputElement | null>(null);
   const galleryRef = useRef<HTMLInputElement | null>(null);
   const savingRef = useRef(false);
+  const draftVersionRef = useRef(0);
 
   useEffect(() => {
     if (!contentId) return;
@@ -173,6 +174,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
 
   const update = useCallback(<K extends keyof EditorDraft>(key: K, value: EditorDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
+    draftVersionRef.current += 1;
     setDirty(true);
   }, []);
 
@@ -197,6 +199,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
   const save = useCallback(
     async (quiet = false): Promise<ContentRecord | null> => {
       if (savingRef.current || !draft.title.trim()) return null;
+      const saveVersion = draftVersionRef.current;
       savingRef.current = true;
       setSaving(true);
       if (!quiet) setError("");
@@ -210,9 +213,9 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
               method: "POST",
               ...jsonBody(payload("draft")),
             });
-        setDraft(fromRecord(record));
+        setDraft((current) => draftVersionRef.current === saveVersion ? fromRecord(record) : { ...current, id: record.id });
         setTagHistory((current) => Array.from(new Set([...current, ...record.tags])).sort((a, b) => a.localeCompare(b, "zh-CN")));
-        setDirty(false);
+        setDirty(draftVersionRef.current !== saveVersion);
         setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }));
         onSaved?.(record);
         return record;
@@ -430,7 +433,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
       const markdownText = await file.text();
       const result = await studioRequest<ContentRecord | { content: ContentRecord }>("/api/admin/import", {
         method: "POST",
-        ...jsonBody({ markdown: markdownText, commit: true, confirm: true }),
+        ...jsonBody({ markdown: markdownText, targetId: draft.id, commit: true, confirm: true }),
       });
       const record = "content" in result ? result.content : result;
       setDraft(fromRecord(record));
