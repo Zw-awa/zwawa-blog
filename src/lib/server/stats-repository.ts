@@ -1,4 +1,5 @@
 import { AppError } from "./errors";
+import { promoteDueScheduledContent } from "./content-repository";
 import type { AppRuntimeEnv, D1DatabaseLike, JsonObject, JsonValue } from "./types";
 import { parseJsonObject } from "./validation";
 
@@ -331,6 +332,7 @@ export async function refreshStatistics(db: D1DatabaseLike, env: AppRuntimeEnv =
 }
 
 export async function getStatsDashboard(db: D1DatabaseLike) {
+  await promoteDueScheduledContent(db);
   const [counts, media, snapshots, links] = await Promise.all([
     db.prepare(`
       SELECT type, status, COUNT(*) AS count FROM content GROUP BY type, status ORDER BY type, status

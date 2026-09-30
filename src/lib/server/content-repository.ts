@@ -79,6 +79,14 @@ function mapContent(row: ContentRow, tags: string[] = []): ContentRecord {
   };
 }
 
+/** Promote due scheduled records so admin state matches their public availability. */
+export async function promoteDueScheduledContent(db: D1DatabaseLike, now = new Date().toISOString()): Promise<void> {
+  await db
+    .prepare("UPDATE content SET status = 'published', updated_at = ? WHERE status = 'scheduled' AND published_at IS NOT NULL AND published_at <= ?")
+    .bind(now, now)
+    .run();
+}
+
 async function attachTags(db: D1DatabaseLike, rows: ContentRow[]): Promise<ContentRecord[]> {
   if (rows.length === 0) return [];
   const placeholders = rows.map(() => "?").join(", ");
@@ -149,6 +157,7 @@ export async function listContent(
   db: D1DatabaseLike,
   query: ListContentQuery = {}
 ): Promise<PaginatedResult<ContentRecord>> {
+  await promoteDueScheduledContent(db);
   const page = Math.max(1, query.page ?? 1);
   const limit = Math.max(1, Math.min(100, query.limit ?? 20));
   const where: string[] = [];
@@ -221,6 +230,7 @@ export function listPublishedContent(
 }
 
 export async function getContentById(db: D1DatabaseLike, id: string): Promise<ContentRecord | null> {
+  await promoteDueScheduledContent(db);
   const row = await db
     .prepare(`SELECT ${CONTENT_COLUMNS} FROM content c WHERE c.id = ?`)
     .bind(id)
