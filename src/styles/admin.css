@@ -144,7 +144,7 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; stroke-width: 1.8; }
 .editor-toolbar button { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; }
 .editor-toolbar button:hover, .editor-toolbar button.active { border-color: var(--studio-line-strong); background: white; color: var(--studio-green); }
 .toolbar-spacer { flex: 1; }
-.markdown-workspace { display: grid; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); height: min(720px, calc(100vh - 250px)); min-height: 520px; overflow: hidden; background: white; align-items: stretch; }
+.markdown-workspace { display: grid; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); height: min(900px, calc(100vh - 170px)); min-height: 620px; overflow: hidden; background: white; align-items: stretch; }
 .markdown-workspace.with-preview { grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr); }
 .markdown-source { position: relative; min-width: 0; min-height: 0; height: auto; align-self: stretch; border-right: 1px solid var(--studio-line); overflow: hidden; overscroll-behavior: contain; }
 .markdown-source .cm-editor { position: absolute; inset: 0; width: 100%; height: 100% !important; min-height: 0; background: #fff; font: 14px/1.7 "Cascadia Code", "SFMono-Regular", Consolas, monospace; }
@@ -231,7 +231,7 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; stroke-width: 1.8; }
 @media (max-width: 980px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .editor-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .markdown-workspace.with-preview { grid-template-columns: 1fr; }
+  .markdown-workspace.with-preview { grid-template-columns: 1fr; grid-template-rows: minmax(520px, 1fr) minmax(520px, 1fr); height: auto; min-height: 1040px; overflow: visible; }
   .markdown-preview { border-top: 1px solid var(--studio-line); }
   .platform-row { grid-template-columns: repeat(2, minmax(0, 1fr)) 38px; }.platform-row > button { grid-column: 3; grid-row: 1; }
   .editor-actions .secondary-button:first-of-type { display: none; }
