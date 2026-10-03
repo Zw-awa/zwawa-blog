@@ -10,6 +10,7 @@ import {
   Code2,
   Download,
   Eye,
+  Heading1,
   Heading2,
   ImagePlus,
   Italic,
@@ -177,6 +178,22 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
     draftVersionRef.current += 1;
     setDirty(true);
   }, []);
+
+  const extractFirstHeading = useCallback(() => {
+    const match = /^(#) ([^\r\n]+)(?:\r?\n|$)/.exec(draft.bodyMarkdown);
+    if (!match) return;
+    const title = match[2].trim();
+    if (!title) return;
+    const bodyMarkdown = draft.bodyMarkdown.slice(match[0].length);
+    setDraft((current) => ({
+      ...current,
+      title,
+      slug: current.slug || slugify(title),
+      bodyMarkdown,
+    }));
+    draftVersionRef.current += 1;
+    setDirty(true);
+  }, [draft.bodyMarkdown]);
 
   const payload = useCallback(
     (status = draft.status) => ({
@@ -527,6 +544,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
       </section>
 
       <div className="editor-toolbar" aria-label="Markdown 格式工具栏">
+        <button type="button" title="提取首行标题" onClick={extractFirstHeading}><Heading1 /></button>
         <button type="button" title="二级标题" onClick={() => insertLine("## ", "标题")}><Heading2 /></button>
         <button type="button" title="粗体" onClick={() => wrapSelection("**", "**")}><Bold /></button>
         <button type="button" title="斜体" onClick={() => wrapSelection("*", "*")}><Italic /></button>
