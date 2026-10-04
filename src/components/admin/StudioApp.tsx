@@ -139,7 +139,8 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  const [sort, setSort] = useState<{ field: "title" | "type" | "status" | "updatedAt"; direction: "asc" | "desc" }>({ field: "updatedAt", direction: "desc" });
+  const sortHeaders = [["title", "标题"], ["type", "类型"], ["status", "状态"], ["updatedAt", "更新时间"]] as const;
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -147,7 +148,7 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
   const load = useCallback(async (pageNumber = 1) => {
     setLoading(true);
     setError("");
-    const params = new URLSearchParams({ page: String(pageNumber), limit: "20", sort });
+    const params = new URLSearchParams({ page: String(pageNumber), limit: "20", sort: sort.field, direction: sort.direction });
     if (type) params.set("type", type);
     if (status) params.set("status", status);
     if (query) params.set("search", query);
@@ -180,11 +181,10 @@ function ContentView({ onEdit }: { onEdit: (id?: string) => void }) {
       <form className="studio-search" onSubmit={(event) => { event.preventDefault(); setQuery(search.trim()); }}><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索标题、摘要或正文" /><button type="submit">搜索</button></form>
       <select aria-label="内容类型" value={type} onChange={(event) => setType(event.target.value)}><option value="">全部类型</option>{Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
       <select aria-label="发布状态" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">全部状态</option>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-      <select aria-label="排序方式" value={sort} onChange={(event) => setSort(event.target.value as "newest" | "oldest")}><option value="newest">时间最新</option><option value="oldest">时间最早</option></select>
     </div>
     {error && <div className="studio-alert">{error}</div>}
     <section className="content-table-wrap">
-      {loading ? <div className="studio-loading"><LoaderCircle className="spin" /> 正在读取内容</div> : page.items.length ? <table className="content-table"><thead><tr><th>标题</th><th>类型</th><th>状态</th><th>更新时间</th><th><span className="sr-only">操作</span></th></tr></thead><tbody>{page.items.map((item) => <tr key={item.id}><td><button className="content-title-button" onClick={() => onEdit(item.id)}><strong>{item.title}</strong><span>/{item.slug}</span></button></td><td>{TYPE_LABELS[item.type]}</td><td><StatusBadge status={item.status} /></td><td>{formatDate(item.updatedAt)}</td><td><div className="content-actions"><button className="icon-button" title="编辑" aria-label={`编辑《${item.title}》`} disabled={deletingId === item.id} onClick={() => onEdit(item.id)}><Pencil /></button><button className="icon-button danger" title="永久删除" aria-label={`永久删除《${item.title}》`} disabled={deletingId !== null} onClick={() => void remove(item)}>{deletingId === item.id ? <LoaderCircle className="spin" /> : <Trash2 />}</button></div></td></tr>)}</tbody></table> : <EmptyState title="没有符合条件的内容" />}
+      {loading ? <div className="studio-loading"><LoaderCircle className="spin" /> 正在读取内容</div> : page.items.length ? <table className="content-table"><thead><tr>{sortHeaders.map(([field, label]) => <th key={field} aria-sort={sort.field === field ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}><button className="table-sort-button" type="button" onClick={() => setSort((current) => ({ field, direction: current.field === field && current.direction === "asc" ? "desc" : "asc" }))}>{label}{sort.field === field && <span aria-hidden="true">{sort.direction === "asc" ? "↑" : "↓"}</span>}</button></th>)}<th><span className="sr-only">操作</span></th></tr></thead><tbody>{page.items.map((item) => <tr key={item.id}><td><button className="content-title-button" onClick={() => onEdit(item.id)}><strong>{item.title}</strong><span>/{item.slug}</span></button></td><td>{TYPE_LABELS[item.type]}</td><td><StatusBadge status={item.status} /></td><td>{formatDate(item.updatedAt)}</td><td><div className="content-actions"><button className="icon-button" title="编辑" aria-label={`编辑《${item.title}》`} disabled={deletingId === item.id} onClick={() => onEdit(item.id)}><Pencil /></button><button className="icon-button danger" title="永久删除" aria-label={`永久删除《${item.title}》`} disabled={deletingId !== null} onClick={() => void remove(item)}>{deletingId === item.id ? <LoaderCircle className="spin" /> : <Trash2 />}</button></div></td></tr>)}</tbody></table> : <EmptyState title="没有符合条件的内容" />}
     </section>
     {page.totalPages > 1 && <nav className="pagination" aria-label="内容分页"><button disabled={page.page <= 1} onClick={() => void load(page.page - 1)}><ChevronLeft />上一页</button><span>{page.page} / {page.totalPages}</span><button disabled={page.page >= page.totalPages} onClick={() => void load(page.page + 1)}>下一页<ChevronRight /></button></nav>}
   </div>;

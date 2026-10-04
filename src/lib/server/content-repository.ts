@@ -41,7 +41,8 @@ export interface ListContentQuery {
   tag?: string;
   search?: string;
   locale?: string;
-  sort?: "newest" | "oldest";
+  sort?: "newest" | "oldest" | "title" | "type" | "status" | "updatedAt";
+  direction?: "asc" | "desc";
   page?: number;
   limit?: number;
 }
@@ -199,14 +200,18 @@ export async function listContent(
     .bind(...values)
     .first<{ total: number }>();
   const total = Number(countRow?.total ?? 0);
-  const sortDirection = query.sort === "oldest" ? "ASC" : "DESC";
+  const sortColumn = query.sort === "title" ? "c.title COLLATE NOCASE"
+    : query.sort === "type" ? "c.type"
+      : query.sort === "status" ? "c.status"
+        : query.sort === "updatedAt" ? "c.updated_at" : "COALESCE(c.published_at, c.updated_at)";
+  const sortDirection = query.direction === "asc" || query.sort === "oldest" ? "ASC" : "DESC";
   const rows = await db
     .prepare(`
       SELECT ${CONTENT_COLUMNS}
       FROM content c
       ${clause}
       ORDER BY
-        COALESCE(c.published_at, c.updated_at) ${sortDirection},
+        ${sortColumn} ${sortDirection},
         c.id DESC
       LIMIT ? OFFSET ?
     `)

@@ -21,7 +21,10 @@ export const GET: APIRoute = apiHandler(async (context) => {
     tag: url.searchParams.get("tag") ?? undefined,
     search: url.searchParams.get("search") ?? undefined,
     locale: url.searchParams.get("locale") ?? undefined,
-    sort: url.searchParams.get("sort") === "oldest" ? "oldest" : "newest",
+    sort: ["title", "type", "status", "updatedAt"].includes(url.searchParams.get("sort") || "")
+      ? url.searchParams.get("sort") as "title" | "type" | "status" | "updatedAt"
+      : "updatedAt",
+    direction: url.searchParams.get("direction") === "asc" ? "asc" : "desc",
     ...getPagination(url)
   });
   return ok(result);
