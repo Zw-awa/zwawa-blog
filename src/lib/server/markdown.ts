@@ -57,6 +57,7 @@ export type MarkdownBlock =
       items: MarkdownBlock[][];
     }
   | { type: "code"; language?: string; value: string }
+  | { type: "table"; headers: string[]; rows: string[][] }
   | { type: "thematicBreak" };
 
 const DEFAULT_EXCERPT_LENGTH = 160;
@@ -483,6 +484,30 @@ function isThematicBreak(value: string): boolean {
   return /^ {0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/.test(value);
 }
 
+function splitTableRow(value: string): string[] {
+  const row = value.trim().replace(/^\|/, "").replace(/\|$/, "");
+  return row.split("|").map((cell) => cell.trim());
+}
+
+function isTableDelimiter(value: string): boolean {
+  const cells = splitTableRow(value);
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function matchTable(lines: string[], start: number): { block: MarkdownBlock; next: number } | null {
+  if (start + 1 >= lines.length || !lines[start].includes("|") || !isTableDelimiter(lines[start + 1])) return null;
+  const headers = splitTableRow(lines[start]);
+  if (headers.length === 0) return null;
+  const rows: string[][] = [];
+  let index = start + 2;
+  while (index < lines.length && lines[index].trim() && lines[index].includes("|")) {
+    const cells = splitTableRow(lines[index]);
+    rows.push(Array.from({ length: headers.length }, (_, cellIndex) => cells[cellIndex] || ""));
+    index += 1;
+  }
+  return { block: { type: "table", headers, rows }, next: index };
+}
+
 function matchFence(value: string): { character: "`" | "~"; length: number; info: string } | null {
   const match = value.match(/^ {0,3}(`{3,}|~{3,})([^`]*)$/);
   if (!match) return null;
@@ -641,6 +666,13 @@ function parseBlocks(lines: string[]): MarkdownBlock[] {
       continue;
     }
 
+    const table = matchTable(lines, index);
+    if (table) {
+      blocks.push(table.block);
+      index = table.next;
+      continue;
+    }
+
     if (/^ {4}/.test(lines[index])) {
       const codeLines: string[] = [];
       while (index < lines.length && (lines[index].trim() || /^ {4}/.test(lines[index]))) {
@@ -686,6 +718,11 @@ function renderBlockHtml(block: MarkdownBlock, options: Required<MarkdownRenderO
       const className = block.language ? ` class="language-${escapeHtml(block.language)}"` : "";
       return `<pre><code${className}>${escapeHtml(block.value)}</code></pre>`;
     }
+    case "table": {
+      const header = block.headers.map((cell) => `<th>${renderInline(cell, "html", 0, options.maxInlineDepth)}</th>`).join("");
+      const rows = block.rows.map((row) => `<tr>${row.map((cell) => `<td>${renderInline(cell, "html", 0, options.maxInlineDepth)}</td>`).join("")}</tr>`).join("\n");
+      return `<div class="markdown-table-wrap"><table><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
     case "thematicBreak":
       return "<hr>";
     case "list": {
@@ -721,6 +758,8 @@ function renderBlockText(block: MarkdownBlock): string {
       return block.blocks.map(renderBlockText).filter(Boolean).join("\n\n");
     case "code":
       return block.value;
+    case "table":
+      return [block.headers, ...block.rows].map((row) => row.join(" ")).join("\n");
     case "thematicBreak":
       return "";
     case "list":
