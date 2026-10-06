@@ -184,7 +184,9 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
     if (!match) return;
     const title = match[2].trim();
     if (!title) return;
-    const bodyMarkdown = draft.bodyMarkdown.slice(match[0].length);
+    const remainder = draft.bodyMarkdown.slice(match[0].length);
+    // Remove one separator blank line when it exists; preserve the body otherwise.
+    const bodyMarkdown = remainder.replace(/^\r?\n/, "");
     setDraft((current) => ({
       ...current,
       title,
@@ -321,7 +323,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
       const selection = view.state.selection.main;
       const from = position ?? selection.from;
       const to = position ?? selection.to;
-      const insert = markdownImages.join("\n\n");
+      const insert = `${markdownImages.join("\n\n")}\n`;
       view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
       view.focus();
     } catch (reason) {
