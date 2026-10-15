@@ -524,7 +524,7 @@ export default function MarkdownEditor({ contentId, onClose, onSaved }: Props) {
         <label className="field field-wide"><span>摘要</span><textarea rows={2} maxLength={500} value={draft.summary} onChange={(event) => update("summary", event.target.value)} placeholder="用于列表与搜索结果的简短说明" /></label>
         <label className="field"><span>标签</span><input list="tag-history" value={draft.tags.join(", ")} onChange={(event) => update("tags", event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))} placeholder="Astro, Cloudflare" /><datalist id="tag-history">{tagHistory.map((tag) => <option key={tag} value={tag} />)}</datalist></label>
         <label className="field"><span>语言</span><select value={draft.locale} onChange={(event) => update("locale", event.target.value)}><option value="zh-CN">简体中文</option><option value="en">English（预留）</option></select></label>
-        <label className="field"><span>发布时间</span><input type="datetime-local" value={toLocalDateTime(draft.publishedAt)} onChange={(event) => update("publishedAt", event.target.value ? new Date(event.target.value).toISOString() : null)} /></label>
+        <label className="field"><span>发布时间（可用于调整系列顺序）</span><input type="datetime-local" value={toLocalDateTime(draft.publishedAt)} onChange={(event) => update("publishedAt", event.target.value ? new Date(event.target.value).toISOString() : null)} /></label>
         {metadataFields(draft.type).map((item) => <label className="field" key={item.key}><span>{item.label}</span><input value={draft.metadata[item.key] || ""} onChange={(event) => {
           setDraft((current) => ({ ...current, metadata: { ...current.metadata, [item.key]: event.target.value } }));
           setDirty(true);

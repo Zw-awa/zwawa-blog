@@ -254,6 +254,7 @@ export async function getPublishedContentBySlug(
   type: ContentType,
   slug: string
 ): Promise<ContentRecord | null> {
+  await promoteDueScheduledContent(db);
   const row = await db
     .prepare(`SELECT ${CONTENT_COLUMNS} FROM content c WHERE c.type = ? AND c.slug = ? AND c.status IN ('published', 'scheduled') AND c.published_at <= ?`)
     .bind(type, slug, new Date().toISOString())
@@ -266,6 +267,7 @@ export async function findSlugRedirect(
   type: ContentType,
   oldSlug: string
 ): Promise<{ contentId: string; type: ContentType; slug: string } | null> {
+  await promoteDueScheduledContent(db);
   const row = await db
     .prepare(`
       SELECT r.content_id, c.type, c.slug

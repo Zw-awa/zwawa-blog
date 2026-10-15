@@ -158,6 +158,12 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; stroke-width: 1.8; }
 .markdown-source .cm-content { padding: 18px 8px; }
 .markdown-source .cm-gutters { border-right: 1px solid #edf0eb; background: #f8f9f6; color: #9ba29a; }
 .markdown-preview { min-width: 0; min-height: 0; padding: 30px clamp(22px, 4vw, 54px) 70px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; background: #fcfcfa; }
+.markdown-preview .markdown-table-wrap { max-width: 100%; margin: 1.5rem 0; overflow-x: auto; border: 1px solid #dfe4dc; }
+.markdown-preview table { width: 100%; min-width: 560px; border-collapse: collapse; table-layout: auto; font-size: 0.95em; }
+.markdown-preview th, .markdown-preview td { min-width: 7rem; padding: 0.7rem 0.85rem; border-right: 1px solid #dfe4dc; border-bottom: 1px solid #dfe4dc; text-align: left; vertical-align: top; white-space: normal; }
+.markdown-preview th { background: #f1f4ef; color: #27312a; font-weight: 700; }
+.markdown-preview tr:last-child td { border-bottom: 0; }
+.markdown-preview th:last-child, .markdown-preview td:last-child { border-right: 0; }
 .markdown-preview img[data-markdown-source] { cursor: zoom-in; }
 .markdown-preview img[data-markdown-source]:hover { outline: 2px solid rgba(31,107,79,0.45); outline-offset: 3px; }
 .markdown-preview .markdown-image-crop { position: relative; display: block; max-width: 100%; margin: 2rem auto; overflow: hidden; border: 1px solid var(--studio-line); border-radius: 4px; }
