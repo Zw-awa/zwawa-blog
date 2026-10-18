@@ -74,6 +74,14 @@ img {
   max-width: 100%;
 }
 
+/* Keep grid children from creating an implicit overflow column on narrow screens. */
+main,
+section,
+article,
+figure {
+  min-width: 0;
+}
+
 h1,
 h2,
 h3,
@@ -2027,8 +2035,19 @@ pre,
   }
 
   .hero-window {
-    min-height: 24rem;
+    min-height: 0;
+    height: 18rem;
     margin: 0;
+  }
+
+  .hero-window img,
+  .hero-window-empty {
+    height: calc(100% - 4.8rem);
+    min-height: 0;
+  }
+
+  .hero-window figcaption {
+    min-height: 4.8rem;
   }
 
   .hero-copy h1 {
@@ -2223,7 +2242,7 @@ pre,
   }
 
   .hero-window {
-    min-height: 20rem;
+    height: 15rem;
     box-shadow: 8px 8px 0 rgba(231, 195, 111, 0.08);
   }
 
